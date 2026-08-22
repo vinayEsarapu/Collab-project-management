@@ -44,7 +44,6 @@ const registerUser = async (req, res) => {
   }
 };
 
-
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -74,26 +73,105 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
+    // Short-lived access token
+    const accessToken = jwt.sign(
       {
         userId: user._id,
         role: user.role
       },
-      process.env.JWT_SECRET,
+      process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: "1h"
+        expiresIn: "15m"
       }
     );
 
+    // Long-lived refresh token
+    const refreshToken = jwt.sign(
+      {
+        userId: user._id,
+        role: user.role
+      },
+      process.env.REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: "7d"
+      }
+    );
+
+    // Store refresh token in an HttpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
     res.status(200).json({
       message: "Login successful",
-      token
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      accessToken
     });
+
   } catch (error) {
+    console.error(error);
+
     res.status(500).json({
       message: "Server error"
     });
   }
+};
+
+const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message: "Refresh token not found"
+      });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const accessToken = jwt.sign(
+      {
+        userId: decoded.userId,
+        role: decoded.role
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      {
+        expiresIn: "15m"
+      }
+    );
+
+    res.status(200).json({
+      accessToken
+    });
+
+  } catch (error) {
+    return res.status(403).json({
+      message: "Invalid or expired refresh token"
+    });
+  }
+};
+
+const logoutUser = (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict"
+  });
+
+  res.status(200).json({
+    message: "Logout successful"
+  });
 };
 
 const getMe = async (req, res) => {
@@ -118,5 +196,5 @@ const getMe = async (req, res) => {
 
 
 module.exports = {
-  registerUser ,loginUser , getMe
+  registerUser ,loginUser , getMe, refreshAccessToken, logoutUser
 };
