@@ -210,7 +210,7 @@ const removeMember = async (req, res) => {
     const project = await Project.findOne({
       _id: req.params.id,
       owner: req.user.userId
-    });
+    }).populate("members", "name email");
 
     if (!project) {
       return res.status(404).json({
