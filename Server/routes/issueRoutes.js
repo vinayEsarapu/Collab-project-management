@@ -1,0 +1,53 @@
+const express = require("express");
+
+const {
+  createIssue,
+  getIssues,
+  getIssueById,
+  getIssuesByProject,
+  updateIssue,
+  deleteIssue,
+} = require("../controllers/issueController");
+
+const authMiddleware = require("../middleware/authMiddleware");
+
+const {
+  createIssueValidator,
+  updateIssueValidator,
+} = require("../validators/issuevalidator");
+
+const validate = require("../middleware/validationMiddleware");
+
+const checkIssueAccess = require("../middleware/issueauthorization");
+
+const router = express.Router();
+
+
+// Create issue
+router.post(
+  "/", authMiddleware, createIssueValidator,
+  validate, createIssue);
+
+
+// Get all issues
+router.get("/", authMiddleware, getIssues);
+
+//Get issues by project 
+router.get("/project/:projectId", authMiddleware, checkProjectAccess, getIssuesByProject);
+
+
+// Get single issue
+router.get("/:id", authMiddleware,  checkIssueAccess, getIssueById);
+
+
+// Update issue
+router.put("/:id", authMiddleware,  checkIssueAccess,
+  updateIssueValidator,
+  validate, updateIssue);
+
+
+// Delete issue
+router.delete("/:id", authMiddleware,  checkIssueAccess, deleteIssue);
+
+
+module.exports = router;
