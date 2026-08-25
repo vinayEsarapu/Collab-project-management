@@ -168,9 +168,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
                 className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
               >
                 <option value="Open">Open</option>
-                <option value="In Progress">
-                  In Progress
-                </option>
+                <option value="In Progress">In Progress</option>
                 <option value="Resolved">Resolved</option>
                 <option value="Closed">Closed</option>
               </select>

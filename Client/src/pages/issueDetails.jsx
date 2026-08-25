@@ -5,7 +5,8 @@ import IssueForm from "../components/issues/issueform";
 import {
   updateIssue,
   deleteIssue,
-} from "../services/issueService";
+} from "../services/issueservices";
+import projectService from "../services/projectservices";
 
 function IssueDetails() {
   const { id: projectId, issueId } = useParams();
@@ -17,6 +18,17 @@ function IssueDetails() {
   const [error, setError] = useState("");
   const [showEditForm, setShowEditForm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [project, setProject] = useState(null);
+
+  const fetchProject = async () => {
+  try {
+    const data = await projectService.getProjectById(projectId);
+
+    setProject(data);
+  } catch (error) {
+    console.error("Failed to load project:", error);
+  }
+};
 
   const handleUpdateIssue = async (issueData) => {
   try {
@@ -81,10 +93,14 @@ const handleDeleteIssue = async () => {
   };
 
   useEffect(() => {
-    if (issueId) {
-      fetchIssue();
-    }
-  }, [issueId]);
+  if (issueId) {
+    fetchIssue();
+  }
+
+  if (projectId) {
+    fetchProject();
+  }
+}, [issueId, projectId]);
 
   const getStatusStyle = (status) => {
     const styles = {
@@ -386,6 +402,7 @@ const handleDeleteIssue = async () => {
        <IssueForm
         projectId={projectId}
         issue={issue}
+        members={project?.members || []}
         onSubmit={handleUpdateIssue}
         onClose={() => setShowEditForm(false)}
       />

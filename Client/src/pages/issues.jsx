@@ -4,12 +4,14 @@ import IssueForm from "../components/issues/issueform";
 import {
   createIssue,
   getIssuesByProject,
-} from "../services/issueService";
+} from "../services/issueservices";
 import { useParams } from "react-router-dom";
+import projectService from "../services/projectservices";
 
 function Issues() {
   const { id: projectId } = useParams();
   const [issues, setIssues] = useState([]);
+  const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
@@ -17,6 +19,22 @@ function Issues() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
+
+//   const getProjectById = async (projectId) => {
+//   const response = await api.get(`/projects/${projectId}`);
+
+//   return response.data.project;
+// };
+
+  const fetchProject = async () => {
+  try {
+    const data = await projectService.getProjectById(projectId);
+
+    setProject(data);
+  } catch (error) {
+    console.error("Failed to load project:", error);
+  }
+};
 
   const fetchIssues = async () => {
     try {
@@ -38,6 +56,7 @@ function Issues() {
 
   useEffect(() => {
     if (projectId) {
+      fetchProject();
       fetchIssues();
     }
   }, [projectId]);
@@ -97,6 +116,17 @@ function Issues() {
           </div>
 
           <button
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("All");
+              setPriorityFilter("All");
+           }}
+           className="rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white"
+          >
+          Clear
+          </button>
+
+          <button
             onClick={() => setShowForm(true)}
             className="group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20"
           >
@@ -116,34 +146,26 @@ function Issues() {
                 type="text"
                 placeholder="Search issues..."
                 value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
+                onChange={(event) =>setSearch(event.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-indigo-400/50"
               />
             </div>
 
             <select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value)
-              }
+              onChange={(event) => setStatusFilter(event.target.value)}
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none focus:border-indigo-400/50"
             >
               <option value="All">All Status</option>
               <option value="Open">Open</option>
-              <option value="In Progress">
-                In Progress
-              </option>
+              <option value="In Progress">  In Progress </option>
               <option value="Resolved">Resolved</option>
               <option value="Closed">Closed</option>
             </select>
 
             <select
               value={priorityFilter}
-              onChange={(event) =>
-                setPriorityFilter(event.target.value)
-              }
+              onChange={(event) =>setPriorityFilter(event.target.value)}
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none focus:border-indigo-400/50"
             >
               <option value="All">All Priority</option>
@@ -234,7 +256,8 @@ function Issues() {
       {showForm && (
         <IssueForm
           projectId={projectId}
-          members={members}
+          //issue={issue}
+          members={project?.members || []}
           onSubmit={handleCreateIssue}
           onClose={() => setShowForm(false)}
         />
