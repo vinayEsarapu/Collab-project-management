@@ -2,14 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/Authcontext";
 import projectService from "../services/projectService";
 import { useNavigate } from "react-router-dom";
+import {
+  getIssues,
+  getIssuesByProject,
+} from "../services/issueservices";
 //import Issues from "../pages/Issues";
 
 function Dashboard() {
   const { user, logout } = useAuth();
 
   const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [issues, setIssues] = useState([]);
+  const [issuesLoading, setIssuesLoading] = useState(true);
+  const [issuesError, setIssuesError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -37,6 +46,38 @@ function Dashboard() {
     };
     loadProjects();
   }, []);
+
+  useEffect(() => {
+  const loadIssues = async () => {
+    try {
+      setIssuesLoading(true);
+      setIssuesError("");
+
+      let data;
+
+      if (selectedProject === "all") {
+        data = await getIssues();
+      } else {
+        data = await getIssuesByProject(selectedProject);
+      }
+
+      setIssues(data.issues || []);
+    } catch (error) {
+      console.error("Failed to load issues:", error);
+
+      setIssuesError(
+        error.response?.data?.message ||
+          "Unable to load issue statistics."
+      );
+
+      setIssues([]);
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  loadIssues();
+}, [selectedProject]);
 
   const handleLogout = async () => {
     await logout();
@@ -73,6 +114,24 @@ function Dashboard() {
       ).length,
     };
   }, [projects]);
+
+  const issueStats = useMemo(() => {
+  return {
+    total: issues.length,
+
+    open: issues.filter(
+      (issue) => issue.status === "Open"
+    ).length,
+
+    inProgress: issues.filter(
+      (issue) => issue.status === "In Progress"
+    ).length,
+
+    closed: issues.filter(
+      (issue) => issue.status === "Closed"
+    ).length,
+  };
+}, [issues]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -146,7 +205,12 @@ function Dashboard() {
         </section>
 
         {/* Statistics */}
-        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mb-8">
+        <h3 className="mb-4 text-lg font-semibold">
+           Project Overview
+        </h3>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Projects"
             value={projectStats.total}
@@ -170,7 +234,99 @@ function Dashboard() {
             value={projectStats.completed}
             description="Successfully completed"
           />
+           </div>
         </section>
+
+   <section className="mb-8">
+  <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h3 className="text-lg font-semibold">
+        Issue Overview
+      </h3>
+
+      <p className="mt-1 text-sm text-slate-400">
+        Track the current state of your issues.
+      </p>
+    </div>
+
+    <div className="w-full sm:w-56">
+      <label
+        htmlFor="project-filter"
+        className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500"
+      >
+        Filter by project
+      </label>
+
+      <select
+        id="project-filter"
+        value={selectedProject}
+        onChange={(event) =>
+          setSelectedProject(event.target.value)
+        }
+        className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+      >
+        <option value="all">
+          All Projects
+        </option>
+
+        {projects.map((project) => (
+          <option
+            key={project._id}
+            value={project._id}
+          >
+            {project.name}
+          </option>
+        ))}
+      </select>
+      {/* Selected project information */}
+  {selectedProject !== "all" && (
+    <p className="mt-2 text-xs text-slate-500">
+      Showing issues for{" "}
+      <span className="text-slate-300">
+        {projects.find(
+          (project) => project._id === selectedProject
+        )?.name}
+      </span>
+    </p>
+  )}
+</div>
+</div>
+
+
+  {issuesError && (
+    <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+      {issuesError}
+    </div>
+  )}
+
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <StatCard
+      label="Total Issues"
+      value={issuesLoading ? "—" : issueStats.total}
+      description="All issues"
+    />
+
+    <StatCard
+      label="Open"
+      value={issuesLoading ? "—" : issueStats.open}
+      description="Issues needing attention"
+    />
+
+    <StatCard
+      label="In Progress"
+      value={
+        issuesLoading ? "—" : issueStats.inProgress
+      }
+      description="Currently being worked on"
+    />
+
+    <StatCard
+      label="Closed"
+      value={issuesLoading ? "—" : issueStats.closed}
+      description="Completed issues"
+    />
+  </div>
+</section>
 
         {/* Project section */}
         <section>
