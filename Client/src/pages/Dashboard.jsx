@@ -135,44 +135,6 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-              Collab
-            </h1>
-
-            <p className="hidden text-xs text-slate-400 sm:block">
-              Project Management Platform
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium">
-                {user?.name || "User"}
-              </p>
-
-              <p className="text-xs text-slate-400">
-                {user?.email}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold ring-1 ring-white/10">
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
-            </div>
-
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 transition-all duration-200 hover:border-red-400/40 hover:bg-red-400/10 hover:text-red-300"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* Main */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Welcome section */}
