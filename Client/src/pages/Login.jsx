@@ -7,6 +7,8 @@ function Login() {
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const { login } = useAuth();
 
@@ -21,24 +23,27 @@ function Login() {
   };
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
 
-    try {
-      const response = await loginUser(formData);
+  try {
+    setLoading(true);
+    setError("");
 
-      const { user, accessToken } = response.data;
+    const response = await loginUser(formData);
+    const { user, accessToken } = response.data;
 
-      login(user, accessToken);
+    login(user, accessToken);
 
-      console.log("Login successful");
-
-      // We will connect the actual JWT response here
-      // after confirming your backend response structure.
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
-  };
-
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+      error.response?.data?.errors?.[0]?.msg ||
+      "Login failed. Please check your email and password."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
     //console.log(formData);
   
 
@@ -47,6 +52,11 @@ function Login() {
       <h1>Login</h1>
 
       <form onSubmit={handleSubmit}>
+        {error && (
+  <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+    {error}
+  </div>
+)}
         <div>
           <label>Email</label>
 
@@ -69,7 +79,12 @@ function Login() {
           />
         </div>
 
-        <button type="submit">Login</button>
+        <button 
+        type="submit"
+        disabled={loading}
+    >
+       {loading ? "Signing in..." : "Login"}
+        Login</button>
       </form>
     </div>
   );

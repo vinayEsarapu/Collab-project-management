@@ -12,6 +12,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
 
   const [labelInput, setLabelInput] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -65,6 +66,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
     }
 
     try {
+      setSubmitting(true);
       await onSubmit({
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -77,8 +79,10 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Failed to create issue."
+          "Failed to save issue. Please try again."
       );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -105,6 +109,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
           <button
             type="button"
             onClick={onClose}
+            disabled={submitting}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
           >
             ✕
@@ -278,9 +283,17 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
 
             <button
               type="submit"
+               disabled={submitting}
               className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20"
             >
-               {issue ? "Save Changes" : "Create Issue"}
+               {submitting
+                ? issue
+                  ? "Saving..."
+                  : "Creating..."
+                : issue
+                  ? "Save Changes"
+                  : "Create Issue"}
+              
              // Create Issue
             </button>
           </div>

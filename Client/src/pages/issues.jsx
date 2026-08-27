@@ -62,12 +62,23 @@ function Issues() {
   }, [projectId]);
 
   const handleCreateIssue = async (issueData) => {
+  try {
+    setError("");
+
     await createIssue(issueData);
 
     setShowForm(false);
 
     await fetchIssues();
-  };
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+      "Failed to create issue. Please try again."
+    );
+
+    throw error;
+  }
+};
 
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {

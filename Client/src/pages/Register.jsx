@@ -7,6 +7,8 @@ function Register() {
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -18,17 +20,25 @@ function Register() {
   };
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
 
-    try {
-      const response = await registerUser(formData);
+  try {
+    setLoading(true);
+    setError("");
 
-      console.log("Registration successful:", response.data);
-    } catch (error) {
-      console.error("Registration failed:", error);
-    }
-  };
+    const response = await registerUser(formData);
 
+    console.log("Registration successful:", response.data);
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+      error.response?.data?.errors?.[0]?.msg ||
+      "Registration failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
     //console.log(formData);
   
 
@@ -37,6 +47,11 @@ function Register() {
       <h1>Create Account</h1>
 
       <form onSubmit={handleSubmit}>
+        {error && (
+  <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+    {error}
+  </div>
+)}
         <div>
           <label>Name</label>
 
@@ -70,7 +85,13 @@ function Register() {
           />
         </div>
 
-        <button type="submit">Register</button>
+        <button 
+        type="submit"
+        disabled={loading}
+        >
+          {loading ? "Creating account..." : "Create Account"}
+          Register
+          </button>
       </form>
     </div>
   );
