@@ -17,10 +17,10 @@ function Navbar() {
       name: "Projects",
       path: "/projects",
     },
-    {
+    /*{
       name: "Issues",
       path: "/issues",
-    },
+    },*/
   ];
 
   const handleLogout = () => {

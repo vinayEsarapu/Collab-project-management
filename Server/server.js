@@ -1,3 +1,8 @@
+const cors = require("cors");
+const {
+  notFound,
+  errorHandler,
+} = require("./middleware/errorMiddleware");
 const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
@@ -8,10 +13,30 @@ const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 
 dotenv.config();
+if (!process.env.MONGODB_URI) {
+  throw new Error("MONGODB_URI is not configured");
+}
+
+if (!process.env.ACCESS_TOKEN_SECRET) {
+  throw new Error("ACCESS_TOKEN_SECRET is not configured");
+}
+
+if (!process.env.REFRESH_TOKEN_SECRET) {
+  throw new Error("REFRESH_TOKEN_SECRET is not configured");
+}
 const app = express();
+const allowedOrigin = process.env.CLIENT_URL;
+
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  })
+);
+
+app.use(express.json());
 app.use(cookieParser());
 // Middleware
-app.use(express.json());
 app.use("/api/projects", projectRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/comments", commentRoutes);
@@ -29,6 +54,12 @@ app.get("/api/health", (req, res) => {
     message: "API is healthy",
   });
 });
+
+// 404 handler
+app.use(notFound);
+
+// Global error handler
+app.use(errorHandler);
 
 // Start server
 const startServer = async () => {
