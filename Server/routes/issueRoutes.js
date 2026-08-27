@@ -1,4 +1,8 @@
 const express = require("express");
+const {
+  authorizeIssueMember,
+  authorizeIssueCreation,
+} = require("../middleware/authorizationMiddleware");
 
 const {
   createIssue,
@@ -26,7 +30,7 @@ const router = express.Router();
 // Create issue
 router.post(
   "/", authMiddleware, createIssueValidator,
-  validate, createIssue);
+  validate, authorizeIssueCreation, createIssue);
 
 
 // Get all issues
