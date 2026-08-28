@@ -1,7 +1,7 @@
 import api from "./api";
 
 export const getComments = async (issueId) => {
-  const response = await api.get(`/api/comments/issue/${issueId}`);
+  const response = await api.get(`/comments/issue/${issueId}`);
 
   return response.data;
 };

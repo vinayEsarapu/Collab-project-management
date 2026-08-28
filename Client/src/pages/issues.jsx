@@ -6,7 +6,8 @@ import {
   getIssuesByProject,
 } from "../services/issueservices";
 import { useParams } from "react-router-dom";
-import projectService from "../services/projectservices";
+import { getProjectById } from "../services/projectservices";
+//import projectService from "../services/projectservices";
 
 function Issues() {
   const { id: projectId } = useParams();
@@ -28,7 +29,7 @@ function Issues() {
 
   const fetchProject = async () => {
   try {
-    const data = await projectService.getProjectById(projectId);
+    const data = await getProjectById(projectId);
 
     setProject(data);
   } catch (error) {
@@ -72,6 +73,7 @@ function Issues() {
     await fetchIssues();
   } catch (error) {
     setError(
+        error.response?.data?.error ||
       error.response?.data?.message ||
       "Failed to create issue. Please try again."
     );

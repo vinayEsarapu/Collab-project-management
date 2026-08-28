@@ -1,9 +1,10 @@
-const cors = require("cors");
+
 const {
   notFound,
   errorHandler,
 } = require("./middleware/errorMiddleware");
 const express = require("express");
+const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
@@ -29,7 +30,7 @@ const allowedOrigin = process.env.CLIENT_URL;
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );

@@ -1,26 +1,26 @@
 import api from "./api";
 
 export const getIssues = async () => {
-  const response = await api.get("/api/issues");
+  const response = await api.get("/issues");
 
   return response.data;
 };
 
 export const getIssuesByProject = async (projectId) => {
-  const response = await api.get(`/api/issues/project/${projectId}`);
+  const response = await api.get(`/issues/project/${projectId}`);
 
   return response.data;
 };
 
 export const createIssue = async (issueData) => {
-  const response = await api.post("/api/issues", issueData);
+  const response = await api.post("/issues", issueData);
 
   return response.data;
 };
 
 export const updateIssue = async (issueId, issueData) => {
   const response = await api.put(
-    `/api/issues/${issueId}`,
+    `/issues/${issueId}`,
     issueData
   );
 
@@ -29,7 +29,7 @@ export const updateIssue = async (issueId, issueData) => {
 
 export const deleteIssue = async (issueId) => {
   const response = await api.delete(
-    `/api/issues/${issueId}`
+    `/issues/${issueId}`
   );
 
   return response.data;

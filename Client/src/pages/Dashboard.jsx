@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/Authcontext";
-import projectService from "../services/projectService";
+//import projectService from "../services/projectservices";
 import { useNavigate } from "react-router-dom";
 import {
   getIssues,
   getIssuesByProject,
 } from "../services/issueservices";
+import {
+  getProjects,
+} from "../services/projectservices";
 //import Issues from "../pages/Issues";
 
 function Dashboard() {
@@ -24,29 +27,30 @@ function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("All");
 
   const navigate = useNavigate();
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        setIsLoading(true);
-        setError("");
+  
+  const loadProjects = async () => {
+  try {
+    setIsLoading(true);
+    setError("");
 
-        const data = await projectService.getProjects();
+    const data = await getProjects();
 
-        setProjects(data);
-      } catch (error) {
-        console.error("Failed to load projects:", error);
+    setProjects(data);
+  } catch (error) {
+    console.error("Failed to load projects:", error);
 
-        setError(
-          error.response?.data?.message ||
-            "Unable to load your projects. Please try again."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadProjects();
-  }, []);
+    setError(
+      error.response?.data?.message ||
+        "Unable to load your projects. Please try again."
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
+useEffect(() => {
+  loadProjects();
+}, []);
   useEffect(() => {
   const loadIssues = async () => {
     try {
@@ -236,7 +240,7 @@ function Dashboard() {
             key={project._id}
             value={project._id}
           >
-            {project.name}
+            {project.title}
           </option>
         ))}
       </select>
@@ -247,7 +251,7 @@ function Dashboard() {
       <span className="text-slate-300">
         {projects.find(
           (project) => project._id === selectedProject
-        )?.name}
+        )?.title}
       </span>
     </p>
   )}

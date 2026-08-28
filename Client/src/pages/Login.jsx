@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { loginUser } from "../services/authService";
 import { useAuth } from "../context/Authcontext";
+import { useNavigate } from "react-router-dom";
+
 
 function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,6 +36,7 @@ function Login() {
     const { user, accessToken } = response.data;
 
     login(user, accessToken);
+    navigate("/dashboard");
 
   } catch (error) {
     setError(
@@ -84,7 +88,7 @@ function Login() {
         disabled={loading}
     >
        {loading ? "Signing in..." : "Login"}
-        Login</button>
+        </button>
       </form>
     </div>
   );

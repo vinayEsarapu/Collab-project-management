@@ -1,4 +1,4 @@
-const Issue = require("../models/Issue");
+const Issue = require("../models/issues");
 const Project = require("../models/Project");
 
 const checkIssueAccess = async (req, res, next) => {
@@ -21,7 +21,7 @@ const checkIssueAccess = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.id.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner = project.owner.toString() === userId;
 

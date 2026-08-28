@@ -1,5 +1,5 @@
 const Project = require("../models/Project");
-const Issue = require("../models/Issue");
+const Issue = require("../models/issues");
 
 const authorizeProjectMember = async (req, res, next) => {
   try {
@@ -11,7 +11,7 @@ const authorizeProjectMember = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userid.toString();
 
     const isOwner = project.owner.toString() === userId;
 
@@ -42,7 +42,7 @@ const authorizeProjectOwner = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userid.toString();
 
     if (project.owner.toString() !== userId) {
       return res.status(403).json({
@@ -75,7 +75,7 @@ const authorizeIssueMember = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userid.toString();
 
     const isOwner = project.owner.toString() === userId;
 
@@ -108,7 +108,7 @@ const authorizeIssueCreation = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner = project.owner.toString() === userId;
 
@@ -118,7 +118,8 @@ const authorizeIssueCreation = async (req, res, next) => {
 
     if (!isOwner && !isMember) {
       return res.status(403).json({
-        message: "You are not authorized to create issues in this project",
+        message:
+          "You are not authorized to create issues in this project",
       });
     }
 

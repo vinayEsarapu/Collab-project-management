@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Comment = require("../models/comment");
-const Issue = require("../models/Issue");
+const Issue = require("../models/issues");
 
 // Get comments for an issue
 const getComments = async (req, res) => {

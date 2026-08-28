@@ -95,7 +95,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
           <div>
             <h2 className="text-xl font-semibold text-white">
                {issue ? "Edit Issue" : "Create Issue"}
-              //Create Issue
+              
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
@@ -294,7 +294,7 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
                   ? "Save Changes"
                   : "Create Issue"}
               
-             // Create Issue
+            
             </button>
           </div>
         </form>

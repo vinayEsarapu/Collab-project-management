@@ -12,7 +12,7 @@ const checkProjectAccess = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.id.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner = project.owner.toString() === userId;
 

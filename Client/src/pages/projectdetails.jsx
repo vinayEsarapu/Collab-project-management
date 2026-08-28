@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import projectService from "../services/projectService";
+//import projectService from "../services/projectservices";
+import { getProjectById } from "../services/projectservices";
+
 
 function ProjectDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  
     const loadProject = async () => {
       try {
         setIsLoading(true);
         setError("");
 
-        const data = await projectService.getProjectById(id);
+        const data = await getProjectById(id);
 
         setProject(data);
       } catch (error) {
@@ -30,7 +31,8 @@ function ProjectDetails() {
         setIsLoading(false);
       }
     };
-
+  //const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
     loadProject();
   }, [id]);
 
@@ -113,7 +115,16 @@ function ProjectDetails() {
                 </p>
               </div>
 
-              <StatusBadge status={project.status} />
+              <div className="flex flex-col gap-3 sm:items-end">
+               <StatusBadge status={project.status} />
+
+               <button
+                onClick={() => navigate(`/projects/${id}/issues`)}
+                 className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-400"
+                        >
+                 View Issues →
+               </button>
+</div>
             </div>
           </div>
         </section>

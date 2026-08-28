@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
 
 function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -9,6 +11,7 @@ function Register() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -25,10 +28,20 @@ function Register() {
   try {
     setLoading(true);
     setError("");
+    setSuccess("");
 
     const response = await registerUser(formData);
 
     console.log("Registration successful:", response.data);
+
+    setSuccess("Account created successfully! You can now login.");
+
+    // setFormData({
+    //   name: "",
+    //   email: "",
+    //   password: "",
+    // });
+     navigate("/login");
   } catch (error) {
     setError(
       error.response?.data?.message ||
@@ -47,6 +60,11 @@ function Register() {
       <h1>Create Account</h1>
 
       <form onSubmit={handleSubmit}>
+        {success && (
+  <div className="mb-4 rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+    {success}
+  </div>
+)}
         {error && (
   <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
     {error}
@@ -90,7 +108,7 @@ function Register() {
         disabled={loading}
         >
           {loading ? "Creating account..." : "Create Account"}
-          Register
+        
           </button>
       </form>
     </div>

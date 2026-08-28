@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import projectService from "../services/projectService";
-
+import { createProject } from "../services/projectservices";
 function CreateProject() {
   const navigate = useNavigate();
 
@@ -52,7 +51,7 @@ function CreateProject() {
           .filter(Boolean),
       };
 
-      await projectService.createProject(projectData);
+      await createProject(projectData);
 
       navigate("/dashboard");
     } catch (error) {

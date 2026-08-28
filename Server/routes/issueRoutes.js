@@ -3,6 +3,7 @@ const {
   authorizeIssueMember,
   authorizeIssueCreation,
 } = require("../middleware/authorizationMiddleware");
+const  checkProjectAccess = require("../middleware/projectAuthorization");
 
 const {
   createIssue,

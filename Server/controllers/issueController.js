@@ -1,4 +1,4 @@
-const Issue = require("../models/Issue");
+const Issue = require("../models/issues");
 
 // Create an issue
 const createIssue = async (req, res) => {
@@ -13,7 +13,7 @@ const createIssue = async (req, res) => {
       priority,
       labels,
       project,
-      createdBy: req.user.id,
+      createdBy: req.user.userId,
       assignedTo: assignedTo || null,
     });
 
@@ -61,7 +61,7 @@ const getIssues = async (req, res) => {
 const getIssueById = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id)
-      .populate("project", "name description")
+      .populate("project", "title description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email");
 

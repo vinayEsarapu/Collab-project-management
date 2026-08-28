@@ -10,7 +10,9 @@ import {
   getComments,
   createComment,
 } from "../services/commentService";
-import projectService from "../services/projectservices";
+//import projectService from "../services/projectservices";
+import {getProjectById} from "../services/projectservices";
+
 
 function IssueDetails() {
   const { id: projectId, issueId } = useParams();
@@ -70,7 +72,7 @@ function IssueDetails() {
 
   const fetchProject = async () => {
   try {
-    const data = await projectService.getProjectById(projectId);
+    const data = await getProjectById(projectId);
 
     setProject(data);
   } catch (error) {
@@ -127,7 +129,7 @@ const handleDeleteIssue = async () => {
       setLoading(true);
       setError("");
 
-      const response = await api.get(`/api/issues/${issueId}`);
+      const response = await api.get(`/issues/${issueId}`);
 
       setIssue(response.data.issue || response.data);
     } catch (error) {
