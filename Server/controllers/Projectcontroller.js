@@ -29,11 +29,17 @@ const createProject = async (req, res) => {
 
 
 // GET ALL PROJECTS
+// GET ALL PROJECTS
 const getProjects = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
     const projects = await Project.find({
-      owner: req.user.userId
-    });
+      $or: [
+        { owner: userId },
+        { members: userId }
+      ]
+    }).populate("members", "name email");
 
     res.status(200).json({
       projects
@@ -48,17 +54,24 @@ const getProjects = async (req, res) => {
 };
 
 
+
+// GET SINGLE PROJECT
 // GET SINGLE PROJECT
 const getProjectById = async (req, res) => {
   try {
     const project = await Project.findOne({
       _id: req.params.id,
-      owner: req.user.userId
-    });
+      $or: [
+        { owner: req.user.userId },
+        { members: req.user.userId }
+      ]
+    })
+      .populate("owner", "name")
+      .populate("members", "name");
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found"
+        message: "Project not found or you are not authorized to access it"
       });
     }
 
@@ -157,7 +170,7 @@ const addMember = async (req, res) => {
     const project = await Project.findOne({
       _id: req.params.id,
       owner: req.user.userId
-    });
+    }).populate("members", "name email");
 
     if (!project) {
       return res.status(404).json({
@@ -172,6 +185,12 @@ const addMember = async (req, res) => {
         message: "User not found"
       });
     }
+
+    if (project.owner.toString() === userId) {
+     return res.status(400).json({
+     message: "Project owner is already part of the project"
+  });
+}
 
      const alreadyMember = project.members.some(
       (memberId) => memberId.toString() === userId
@@ -212,13 +231,23 @@ const removeMember = async (req, res) => {
       owner: req.user.userId
     }).populate("members", "name email");
 
+    if (userId === project.owner.toString()) {
+  return res.status(400).json({
+    message: "Project owner cannot be removed"
+  });
+}
+
     if (!project) {
       return res.status(404).json({
         message: "Project not found or you are not the owner"
       });
     }
 
-    if (!project.members.includes(userId)) {
+    const isMember = project.members.some(
+      (memberId) => memberId.toString() === userId
+    );
+
+    if (!isMember) {
       return res.status(404).json({
         message: "User is not a member of this project"
       });
@@ -234,7 +263,6 @@ const removeMember = async (req, res) => {
       message: "Member removed successfully",
       project
     });
-
   } catch (error) {
     console.error(error);
 
@@ -244,6 +272,28 @@ const removeMember = async (req, res) => {
   }
 };
 
+// SEARCH REGISTERED USERS FOR PROJECT MEMBERS
+const searchUsers = async (req, res) => {
+  try {
+    const { search = "" } = req.query;
+
+    const users = await User.find({
+      name: { $regex: search.trim(), $options: "i" },
+    })
+      .select("name")
+      .limit(10);
+
+    res.status(200).json({
+      users,
+    });
+  } catch (error) {
+    console.error("Failed to search users:", error);
+
+    res.status(500).json({
+      message: "Unable to search users",
+    });
+  }
+};
 module.exports = {
   createProject,
   getProjects,
@@ -251,5 +301,6 @@ module.exports = {
   updateProject,
   deleteProject,
   addMember,
-  removeMember
+  removeMember,
+   searchUsers,
 };

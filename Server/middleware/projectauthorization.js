@@ -4,7 +4,7 @@ const checkProjectAccess = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(id);
 
     if (!project) {
       return res.status(404).json({

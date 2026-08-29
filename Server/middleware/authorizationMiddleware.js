@@ -11,7 +11,7 @@ const authorizeProjectMember = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.userid.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner = project.owner.toString() === userId;
 
@@ -42,7 +42,7 @@ const authorizeProjectOwner = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.userid.toString();
+    const userId = req.user.userId.toString();
 
     if (project.owner.toString() !== userId) {
       return res.status(403).json({
@@ -75,7 +75,7 @@ const authorizeIssueMember = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.userid.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner = project.owner.toString() === userId;
 

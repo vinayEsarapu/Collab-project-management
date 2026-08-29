@@ -8,7 +8,8 @@ const {
   updateProject,
   deleteProject,
   addMember,
-  removeMember
+  removeMember,
+   searchUsers,
 } = require("../controllers/Projectcontroller");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -23,6 +24,9 @@ router.use(authMiddleware);
 
 // CREATE
 router.post("/", validateProject, createProject);
+
+// SEARCH REGISTERED USERS
+router.get("/users/search", searchUsers);
 
 // READ ALL
 router.get("/", getProjects);
