@@ -9,6 +9,7 @@ import ProjectDetails from "./pages/Projectdetails";
 import Issues from "./pages/issues";
 import IssueDetails from "./pages/issueDetails";
 import Projects from "./pages/Projects";
+import Home from "./pages/Home";
 
 function ProtectedLayout() {
   return (
@@ -28,6 +29,7 @@ function App() {
       <Routes>
 
         {/* Public routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
 

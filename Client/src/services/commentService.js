@@ -8,7 +8,7 @@ export const getComments = async (issueId) => {
 
 export const createComment = async (issueId, content) => {
   const response = await api.post(
-    `/api/comments/issue/${issueId}`,
+    `/comments/issue/${issueId}`,
     {
       content,
     }

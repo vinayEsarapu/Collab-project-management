@@ -66,7 +66,7 @@ const createComment = async (req, res) => {
     const comment = await Comment.create({
       content: content.trim(),
       issue: issueId,
-      createdBy: req.user.id,
+      createdBy: req.user.userId,
     });
 
     const populatedComment = await Comment.findById(comment._id)
