@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/Authcontext";
 import api from "../services/api";
 import IssueForm from "../components/issues/issueform";
 import {
@@ -18,6 +19,7 @@ function IssueDetails() {
   const { id: projectId, issueId } = useParams();
 
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,23 @@ function IssueDetails() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState("");
 
+  const isOwner =
+  user?._id &&
+  project?.owner?._id &&
+  user._id.toString() === project.owner._id.toString();
+
+const isCreator =
+  user?._id &&
+  issue?.createdBy?._id &&
+  user._id.toString() === issue.createdBy._id.toString();
+
+const isAssignee =
+  user?._id &&
+  issue?.assignedTo?._id &&
+  user._id.toString() === issue.assignedTo._id.toString();
+
+const canEdit =
+  Boolean(isOwner || isCreator || isAssignee);
   const formatTimeAgo = (date) => {
   const now = new Date();
   const created = new Date(date);
@@ -607,7 +626,7 @@ const handleAddComment = async (event) => {
           >
             Back to Issues
           </button>
-
+          {isOwner && (
           <button
             onClick={handleDeleteIssue}
             disabled={deleting}
@@ -615,19 +634,22 @@ const handleAddComment = async (event) => {
         >
             {deleting ? "Deleting..." : "Delete Issue"}
           </button>
-
+          )}
+          {canEdit && (
           <button
            onClick={() => setShowEditForm(true)}
            className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
           >
            Edit Issue
           </button>
+          )}
         </div>
       </div>
       {showEditForm && (
        <IssueForm
         projectId={projectId}
         issue={issue}
+         canAssign={isOwner}
         members={project?.members || []}
         onSubmit={handleUpdateIssue}
         onClose={() => setShowEditForm(false)}

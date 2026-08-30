@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import IssueCard from "../components/issues/IssueCard";
+import { useAuth } from "../context/Authcontext";
 import IssueForm from "../components/issues/issueform";
 import {
   createIssue,
@@ -16,7 +17,7 @@ function Issues() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
-
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
@@ -26,6 +27,10 @@ function Issues() {
 
 //   return response.data.project;
 // };
+  const isProjectOwner =
+  user?._id &&
+  project?.owner?._id &&
+  user._id.toString() === project.owner._id.toString();
 
   const fetchProject = async () => {
   try {
@@ -270,6 +275,7 @@ function Issues() {
         <IssueForm
           projectId={projectId}
            project={project}
+            canAssign={isProjectOwner}
           //issue={issue}
           members={project?.members || []}
           onSubmit={handleCreateIssue}

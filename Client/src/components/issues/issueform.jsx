@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMemo } from "react";
 
-function IssueForm({ project , projectId, members = [],  issue = null, onSubmit, onClose }) {
+function IssueForm({ project , projectId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
   const [formData, setFormData] = useState({
   title: issue?.title || "",
   description: issue?.description || "",
@@ -226,7 +226,7 @@ function IssueForm({ project , projectId, members = [],  issue = null, onSubmit,
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Assignee
             </label>
-
+            {canAssign && (
             <select
               name="assignedTo"
               value={formData.assignedTo}
@@ -244,6 +244,7 @@ function IssueForm({ project , projectId, members = [],  issue = null, onSubmit,
                 </option>
               ))}
             </select>
+            )}
           </div>
 
           {/* Labels */}
