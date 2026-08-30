@@ -772,6 +772,13 @@ const handleDeleteComment = async (commentId) => {
 
         {/* Actions */}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          {/* View Activity */}
+        <Link
+        to={`/projects/${projectId}/issues/${issueId}/activity`}
+        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+        >
+         View Activity
+       </Link>
           <button
             onClick={() =>
               navigate(`/projects/${projectId}/issues`)

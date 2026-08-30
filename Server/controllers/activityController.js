@@ -2,10 +2,18 @@ const Activity = require("../models/activity");
 const Issue = require("../models/issues");
 const Project = require("../models/Project");
 
-// Get activity history for an issue
+// Get paginated activity history for an issue
 const getIssueActivities = async (req, res) => {
   try {
     const { issueId } = req.params;
+
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 10, 1),
+      50
+    );
+
+    const { date } = req.query;
 
     const issue = await Issue.findById(issueId);
 
@@ -39,15 +47,60 @@ const getIssueActivities = async (req, res) => {
       });
     }
 
-    const activities = await Activity.find({
+    const filter = {
       issue: issueId,
-    })
+    };
+
+    // Optional single-day filter
+    if (date) {
+      const selectedDate = new Date(`${date}T00:00:00.000`);
+
+      if (Number.isNaN(selectedDate.getTime())) {
+        return res.status(400).json({
+          message: "Invalid date format",
+        });
+      }
+
+      const nextDate = new Date(selectedDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      filter.createdAt = {
+        $gte: selectedDate,
+        $lt: nextDate,
+      };
+    }
+
+    const totalActivities = await Activity.countDocuments(filter);
+
+    const totalPages =
+      totalActivities === 0
+        ? 0
+        : Math.ceil(totalActivities / limit);
+
+    const currentPage =
+      totalPages > 0
+        ? Math.min(page, totalPages)
+        : 1;
+
+    const skip = (currentPage - 1) * limit;
+
+    const activities = await Activity.find(filter)
       .populate("user", "name email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.status(200).json({
       count: activities.length,
       activities,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalActivities,
+        limit,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
+      },
     });
   } catch (error) {
     res.status(500).json({

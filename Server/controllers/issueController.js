@@ -24,6 +24,17 @@ const createIssue = async (req, res) => {
     user: req.user.userId,
     action: "ISSUE_CREATED",
 });
+   if (assignedTo) {
+  await createActivity({
+    issue: issue._id,
+    project: issue.project,
+    user: req.user.userId,
+    action: "ISSUE_ASSIGNED",
+    details: {
+      assignedTo: assignedTo.toString(),
+    },
+  });
+}
 
     const populatedIssue = await Issue.findById(issue._id)
       .populate("project", "name description")
@@ -153,13 +164,18 @@ const updateIssue = async (req, res) => {
       priority !== undefined &&
       priority !== oldPriority;
 
-    const newAssignedTo = issue.assignedTo
-  ? issue.assignedTo.toString()
-  : null;
+    const newAssignedTo =
+  assignedTo !== undefined
+    ? assignedTo || null
+    : oldAssignedTo;
 
-const assignmentChanged =
-  assignedTo !== undefined &&
-  newAssignedTo !== oldAssignedTo;
+  const normalizedNewAssignedTo = newAssignedTo
+   ? newAssignedTo.toString()
+   : null;
+
+  const assignmentChanged =
+    assignedTo !== undefined &&
+    normalizedNewAssignedTo !== oldAssignedTo;
 
     // Existing issue update logic
     issue.title = title ?? issue.title;
@@ -208,12 +224,8 @@ const assignmentChanged =
 
     // Assignment changed
     // Assignment changed
-if (assignmentChanged) {
-  const savedAssignedTo = issue.assignedTo
-    ? issue.assignedTo.toString()
-    : null;
-
-  if (!savedAssignedTo) {
+    if (assignmentChanged) {
+  if (!normalizedNewAssignedTo) {
     await createActivity({
       issue: issue._id,
       project: issue.project,
