@@ -1,4 +1,5 @@
 const Issue = require("../models/issues");
+const Project = require("../models/Project");
 
 // Create an issue
 const createIssue = async (req, res) => {
@@ -38,7 +39,20 @@ const createIssue = async (req, res) => {
 // Get all issues
 const getIssues = async (req, res) => {
   try {
-    const issues = await Issue.find()
+    const userId = req.user.userId;
+
+    const projects = await Project.find({
+      $or: [
+        { owner: userId },
+        { members: userId },
+      ],
+    }).select("_id");
+
+    const projectIds = projects.map((project) => project._id);
+
+    const issues = await Issue.find({
+      project: { $in: projectIds },
+    })
       .populate("project", "name description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")

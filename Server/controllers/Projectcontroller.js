@@ -231,17 +231,17 @@ const removeMember = async (req, res) => {
       owner: req.user.userId
     }).populate("members", "name email");
 
-    if (userId === project.owner.toString()) {
-  return res.status(400).json({
-    message: "Project owner cannot be removed"
-  });
-}
 
     if (!project) {
       return res.status(404).json({
         message: "Project not found or you are not the owner"
       });
     }
+     if (userId === project.owner.toString()) {
+  return res.status(400).json({
+    message: "Project owner cannot be removed"
+  });
+}
 
     const isMember = project.members.some(
       (memberId) => memberId.toString() === userId

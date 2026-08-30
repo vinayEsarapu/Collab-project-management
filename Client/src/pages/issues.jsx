@@ -269,6 +269,7 @@ function Issues() {
       {showForm && (
         <IssueForm
           projectId={projectId}
+           project={project}
           //issue={issue}
           members={project?.members || []}
           onSubmit={handleCreateIssue}

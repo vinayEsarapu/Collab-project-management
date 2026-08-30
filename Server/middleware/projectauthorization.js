@@ -2,9 +2,9 @@ const Project = require("../models/Project");
 
 const checkProjectAccess = async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId || req.params.id;
 
-    const project = await Project.findById(id);
+    const project = await Project.findById(projectId);
 
     if (!project) {
       return res.status(404).json({

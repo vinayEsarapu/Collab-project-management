@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useMemo } from "react";
 
-function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }) {
+function IssueForm({ project , projectId, members = [],  issue = null, onSubmit, onClose }) {
   const [formData, setFormData] = useState({
   title: issue?.title || "",
   description: issue?.description || "",
@@ -13,6 +14,28 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
   const [labelInput, setLabelInput] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const projectMembers = useMemo(() => {
+  if (!project) return [];
+
+  const members = project.members || [];
+
+  const owner = project.owner;
+
+  const users = owner
+    ? [owner, ...members]
+    : members;
+
+  const uniqueUsers = users.filter(
+    (user, index, self) =>
+      index ===
+      self.findIndex(
+        (item) => item._id === user._id
+      )
+  );
+
+  return uniqueUsers;
+}, [project]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -212,12 +235,12 @@ function IssueForm({ projectId, members = [],  issue = null, onSubmit, onClose }
             >
               <option value="">Unassigned</option>
 
-              {members.map((member) => (
+              {projectMembers.map((member) => (
                 <option
                   key={member._id}
                   value={member._id}
                 >
-                  {member.name}
+                  {member.name || member.email}
                 </option>
               ))}
             </select>

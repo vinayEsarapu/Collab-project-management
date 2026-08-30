@@ -2,6 +2,8 @@ const express = require("express");
 const {
   authorizeIssueMember,
   authorizeIssueCreation,
+  authorizeIssueAssignment,
+  authorizeIssueEdit,
 } = require("../middleware/authorizationMiddleware");
 const  checkProjectAccess = require("../middleware/projectauthorization");
 
@@ -46,7 +48,7 @@ router.get("/:id", authMiddleware,  checkIssueAccess, getIssueById);
 
 
 // Update issue
-router.put("/:id", authMiddleware,  checkIssueAccess,
+router.put("/:id", authMiddleware,  checkIssueAccess,   authorizeIssueEdit, authorizeIssueAssignment,
   updateIssueValidator,
   validate, updateIssue);
 
