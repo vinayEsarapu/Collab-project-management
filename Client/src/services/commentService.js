@@ -1,12 +1,34 @@
 import api from "./api";
 
-export const getComments = async (issueId) => {
-  const response = await api.get(`/comments/issue/${issueId}`);
+// Get comments with pagination and optional name filter
+export const getComments = async (
+  issueId,
+  page = 1,
+  limit = 10,
+  name = ""
+) => {
+  const params = new URLSearchParams();
+
+  params.append("page", page);
+  params.append("limit", limit);
+
+  if (name.trim()) {
+    params.append("name", name.trim());
+  }
+
+  const response = await api.get(
+    `/comments/issue/${issueId}?${params.toString()}`
+  );
 
   return response.data;
 };
 
-export const createComment = async (issueId, content) => {
+
+// Create a comment
+export const createComment = async (
+  issueId,
+  content
+) => {
   const response = await api.post(
     `/comments/issue/${issueId}`,
     {
@@ -16,7 +38,13 @@ export const createComment = async (issueId, content) => {
 
   return response.data;
 };
-export const updateComment = async (commentId, content) => {
+
+
+// Update own comment
+export const updateComment = async (
+  commentId,
+  content
+) => {
   const response = await api.put(
     `/comments/${commentId}`,
     {
@@ -27,7 +55,11 @@ export const updateComment = async (commentId, content) => {
   return response.data;
 };
 
-export const deleteComment = async (commentId) => {
+
+// Delete own comment
+export const deleteComment = async (
+  commentId
+) => {
   const response = await api.delete(
     `/comments/${commentId}`
   );

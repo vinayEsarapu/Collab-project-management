@@ -7,13 +7,6 @@ import {
   updateIssue,
   deleteIssue,
 } from "../services/issueservices";
-import {
-  getComments,
-  createComment,
-  updateComment,
-  deleteComment,
-} from "../services/commentService";
-//import projectService from "../services/projectservices";
 import {getProjectById} from "../services/projectservices";
 
 
@@ -29,24 +22,8 @@ function IssueDetails() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [project, setProject] = useState(null);
-  const [comments, setComments] = useState([]);
-  const [commentText, setCommentText] = useState("");
-  const [commentsLoading, setCommentsLoading] = useState(true);
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
-  const [commentError, setCommentError] = useState("");
-  const [editingCommentId, setEditingCommentId] = useState(null);
-const [editingCommentText, setEditingCommentText] = useState("");
-const [commentUpdating, setCommentUpdating] = useState(false);
-const [commentDeletingId, setCommentDeletingId] = useState(null);
+  
 
-const isCommentAuthor = (comment) => {
-  return (
-    user?._id &&
-    comment?.createdBy?._id &&
-    user._id.toString() ===
-      comment.createdBy._id.toString()
-  );
-};
 
   const isOwner =
   user?._id &&
@@ -65,44 +42,6 @@ const isAssignee =
 
 const canEdit =
   Boolean(isOwner || isCreator || isAssignee);
-  const formatTimeAgo = (date) => {
-  const now = new Date();
-  const created = new Date(date);
-
-  const seconds = Math.floor(
-    (now - created) / 1000
-  );
-
-  if (seconds < 60) {
-    return "just now";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-
-  if (minutes < 60) {
-    return `${minutes} ${
-      minutes === 1 ? "minute" : "minutes"
-    } ago`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  if (hours < 24) {
-    return `${hours} ${
-      hours === 1 ? "hour" : "hours"
-    } ago`;
-  }
-
-  const days = Math.floor(hours / 24);
-
-  if (days < 7) {
-    return `${days} ${
-      days === 1 ? "day" : "days"
-    } ago`;
-  }
-
-  return created.toLocaleDateString();
-};
 
   const fetchProject = async () => {
   try {
@@ -175,122 +114,9 @@ const handleDeleteIssue = async () => {
       setLoading(false);
     }
   };
-
-  const fetchComments = async () => {
-  try {
-    setCommentsLoading(true);
-    setCommentError("");
-
-    const data = await getComments(issueId);
-
-    setComments(data.comments || []);
-  } catch (error) {
-    setCommentError(
-      error.response?.data?.message ||
-        "Failed to load comments."
-    );
-  } finally {
-    setCommentsLoading(false);
-  }
-};
-
-const handleAddComment = async (event) => {
-  event.preventDefault();
-
-  if (!commentText.trim()) {
-    return;
-  }
-
-  try {
-    setCommentSubmitting(true);
-    setCommentError("");
-
-    const data = await createComment(
-      issueId,
-      commentText
-    );
-
-    setComments((currentComments) => [
-      ...currentComments,
-      data.comment,
-    ]);
-
-    setCommentText("");
-  } catch (error) {
-    setCommentError(
-      error.response?.data?.message ||
-        "Failed to add comment."
-    );
-  } finally {
-    setCommentSubmitting(false);
-  }
-};
-const handleEditComment = async (commentId) => {
-  if (!editingCommentText.trim()) {
-    return;
-  }
-
-  try {
-    setCommentUpdating(true);
-    setCommentError("");
-
-    const data = await updateComment(
-      commentId,
-      editingCommentText
-    );
-
-    setComments((currentComments) =>
-      currentComments.map((comment) =>
-        comment._id === commentId
-          ? data.comment
-          : comment
-      )
-    );
-
-    setEditingCommentId(null);
-    setEditingCommentText("");
-  } catch (error) {
-    setCommentError(
-      error.response?.data?.message ||
-        "Failed to update comment."
-    );
-  } finally {
-    setCommentUpdating(false);
-  }
-};
-const handleDeleteComment = async (commentId) => {
-  const confirmed = window.confirm(
-    "Are you sure you want to delete this comment?"
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    setCommentDeletingId(commentId);
-    setCommentError("");
-
-    await deleteComment(commentId);
-
-    setComments((currentComments) =>
-      currentComments.filter(
-        (comment) => comment._id !== commentId
-      )
-    );
-  } catch (error) {
-    setCommentError(
-      error.response?.data?.message ||
-        "Failed to delete comment."
-    );
-  } finally {
-    setCommentDeletingId(null);
-  }
-};
   useEffect(() => {
   if (issueId) {
     fetchIssue();
-    fetchComments();
   }
 
   if (projectId) {
@@ -567,218 +393,54 @@ const handleDeleteComment = async (commentId) => {
           </section>
         )}
 
-        {/* Comments */}
+       {/* Comments */}
+
 <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-6">
-  <div className="flex items-center justify-between">
+
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
     <div>
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Activity
+        Comments
       </h2>
 
       <p className="mt-1 text-xs text-slate-500">
-         Comments and activity on this issue.
+        View and discuss comments on this issue.
       </p>
     </div>
 
-    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-      {comments.length}
-    </span>
+    <Link
+      to={`/projects/${projectId}/issues/${issueId}/comments`}
+      className="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400"
+    >
+      View Comments →
+    </Link>
+
   </div>
 
-  {/* Comment list */}
-  <div className="mt-5 space-y-4">
-    {commentsLoading ? (
-      <div className="space-y-3">
-        <div className="h-16 animate-pulse rounded-xl bg-white/5" />
-        <div className="h-16 animate-pulse rounded-xl bg-white/5" />
-      </div>
-    ) : comments.length === 0 ? (
-      <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">
-        <p className="text-sm text-slate-500">
-           No activity yet.
-        </p>
-
-        <p className="mt-1 text-xs text-slate-600">
-           Add a comment to start the discussion.
-        </p>
-      </div>
-    ) : (
-      comments.map((comment) => (
-  <div
-    key={comment._id}
-    className="relative flex gap-4"
-  >
-    {/* Timeline line */}
-    <div className="absolute left-4 top-9 bottom-[-16px] w-px bg-white/10 last:hidden" />
-
-    {/* Activity icon */}
-    <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
-      {comment.createdBy?.name
-        ?.charAt(0)
-        ?.toUpperCase() || "U"}
-    </div>
-
-    {/* Activity content */}
-    <div className="min-w-0 flex-1 pb-5">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-300">
-          <span className="font-semibold text-white">
-            {comment.createdBy?.name || "Unknown User"}
-          </span>{" "}
-          commented
-        </p>
-
-        <p className="text-xs text-slate-600">
-          {formatTimeAgo(comment.createdAt)}
-        </p>
-      </div>
-
-      {editingCommentId === comment._id ? (
-  <div className="mt-2">
-    <textarea
-      value={editingCommentText}
-      onChange={(event) =>
-        setEditingCommentText(event.target.value)
-      }
-      rows={3}
-      maxLength={1000}
-      className="w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-    />
-
-    <div className="mt-2 flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() =>
-          handleEditComment(comment._id)
-        }
-        disabled={
-          commentUpdating ||
-          !editingCommentText.trim()
-        }
-        className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {commentUpdating
-          ? "Saving..."
-          : "Save"}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setEditingCommentId(null);
-          setEditingCommentText("");
-        }}
-        disabled={commentUpdating}
-        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-) : (
-  <>
-    <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
-        {comment.content}
-      </p>
-    </div>
-
-    {isCommentAuthor(comment) && (
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setEditingCommentId(comment._id);
-            setEditingCommentText(
-              comment.content
-            );
-          }}
-          className="text-xs font-medium text-slate-500 transition hover:text-indigo-300"
-        >
-          Edit
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            handleDeleteComment(comment._id)
-          }
-          disabled={
-            commentDeletingId === comment._id
-          }
-          className="text-xs font-medium text-slate-500 transition hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {commentDeletingId === comment._id
-            ? "Deleting..."
-            : "Delete"}
-        </button>
-      </div>
-    )}
-  </>
-)}
-    </div>
-  </div>
-))
-)}
-  </div>
-
-  {/* Error */}
-  {commentError && (
-    <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-      {commentError}
-    </div>
-  )}
-
-  {/* Add comment */}
-  <form
-    onSubmit={handleAddComment}
-    className="mt-5"
-  >
-    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-      Add a comment
-    </label>
-
-    <textarea
-      value={commentText}
-      onChange={(event) =>
-        setCommentText(event.target.value)
-      }
-      placeholder="Write your comment..."
-      rows={3}
-      maxLength={1000}
-      className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-    />
-
-    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs text-slate-600">
-        {commentText.length}/1000 characters
-      </p>
-
-      <button
-        type="submit"
-        disabled={
-          commentSubmitting ||
-          !commentText.trim()
-        }
-        className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {commentSubmitting
-          ? "Posting..."
-          : "Post Comment"}
-      </button>
-    </div>
-  </form>
 </section>
 
         {/* Actions */}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {/* View Activity */}
-        <Link
-        to={`/projects/${projectId}/issues/${issueId}/activity`}
-        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-        >
-         View Activity
-       </Link>
+        {/* View Comments */}
+
+<Link
+  to={`/projects/${projectId}/issues/${issueId}/comments`}
+  className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-5 py-3 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
+>
+  View Comments
+</Link>
+
+
+{/* View Activity */}
+
+<Link
+  to={`/projects/${projectId}/issues/${issueId}/activity`}
+  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+>
+  View Activity
+</Link>
           <button
             onClick={() =>
               navigate(`/projects/${projectId}/issues`)
