@@ -12,6 +12,7 @@ const cookieParser = require("cookie-parser");
 const projectRoutes = require("./routes/projectRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes = require("./routes/commentRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 dotenv.config();
 if (!process.env.MONGODB_URI) {
@@ -41,6 +42,7 @@ app.use(cookieParser());
 app.use("/api/projects", projectRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/activities", activityRoutes);
 //  Routes
 app.use("/api/auth", authRoutes);
 const PORT = process.env.PORT || 5000;

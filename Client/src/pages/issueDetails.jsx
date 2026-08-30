@@ -10,6 +10,8 @@ import {
 import {
   getComments,
   createComment,
+  updateComment,
+  deleteComment,
 } from "../services/commentService";
 //import projectService from "../services/projectservices";
 import {getProjectById} from "../services/projectservices";
@@ -32,6 +34,19 @@ function IssueDetails() {
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+const [editingCommentText, setEditingCommentText] = useState("");
+const [commentUpdating, setCommentUpdating] = useState(false);
+const [commentDeletingId, setCommentDeletingId] = useState(null);
+
+const isCommentAuthor = (comment) => {
+  return (
+    user?._id &&
+    comment?.createdBy?._id &&
+    user._id.toString() ===
+      comment.createdBy._id.toString()
+  );
+};
 
   const isOwner =
   user?._id &&
@@ -210,7 +225,68 @@ const handleAddComment = async (event) => {
     setCommentSubmitting(false);
   }
 };
+const handleEditComment = async (commentId) => {
+  if (!editingCommentText.trim()) {
+    return;
+  }
 
+  try {
+    setCommentUpdating(true);
+    setCommentError("");
+
+    const data = await updateComment(
+      commentId,
+      editingCommentText
+    );
+
+    setComments((currentComments) =>
+      currentComments.map((comment) =>
+        comment._id === commentId
+          ? data.comment
+          : comment
+      )
+    );
+
+    setEditingCommentId(null);
+    setEditingCommentText("");
+  } catch (error) {
+    setCommentError(
+      error.response?.data?.message ||
+        "Failed to update comment."
+    );
+  } finally {
+    setCommentUpdating(false);
+  }
+};
+const handleDeleteComment = async (commentId) => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this comment?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setCommentDeletingId(commentId);
+    setCommentError("");
+
+    await deleteComment(commentId);
+
+    setComments((currentComments) =>
+      currentComments.filter(
+        (comment) => comment._id !== commentId
+      )
+    );
+  } catch (error) {
+    setCommentError(
+      error.response?.data?.message ||
+        "Failed to delete comment."
+    );
+  } finally {
+    setCommentDeletingId(null);
+  }
+};
   useEffect(() => {
   if (issueId) {
     fetchIssue();
@@ -557,11 +633,89 @@ const handleAddComment = async (event) => {
         </p>
       </div>
 
-      <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
-          {comment.content}
-        </p>
+      {editingCommentId === comment._id ? (
+  <div className="mt-2">
+    <textarea
+      value={editingCommentText}
+      onChange={(event) =>
+        setEditingCommentText(event.target.value)
+      }
+      rows={3}
+      maxLength={1000}
+      className="w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+    />
+
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() =>
+          handleEditComment(comment._id)
+        }
+        disabled={
+          commentUpdating ||
+          !editingCommentText.trim()
+        }
+        className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {commentUpdating
+          ? "Saving..."
+          : "Save"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setEditingCommentId(null);
+          setEditingCommentText("");
+        }}
+        disabled={commentUpdating}
+        className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+) : (
+  <>
+    <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
+        {comment.content}
+      </p>
+    </div>
+
+    {isCommentAuthor(comment) && (
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setEditingCommentId(comment._id);
+            setEditingCommentText(
+              comment.content
+            );
+          }}
+          className="text-xs font-medium text-slate-500 transition hover:text-indigo-300"
+        >
+          Edit
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            handleDeleteComment(comment._id)
+          }
+          disabled={
+            commentDeletingId === comment._id
+          }
+          className="text-xs font-medium text-slate-500 transition hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {commentDeletingId === comment._id
+            ? "Deleting..."
+            : "Delete"}
+        </button>
       </div>
+    )}
+  </>
+)}
     </div>
   </div>
 ))

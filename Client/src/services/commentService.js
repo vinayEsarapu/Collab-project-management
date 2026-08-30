@@ -16,3 +16,21 @@ export const createComment = async (issueId, content) => {
 
   return response.data;
 };
+export const updateComment = async (commentId, content) => {
+  const response = await api.put(
+    `/comments/${commentId}`,
+    {
+      content,
+    }
+  );
+
+  return response.data;
+};
+
+export const deleteComment = async (commentId) => {
+  const response = await api.delete(
+    `/comments/${commentId}`
+  );
+
+  return response.data;
+};

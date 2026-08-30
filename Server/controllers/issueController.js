@@ -1,5 +1,6 @@
 const Issue = require("../models/issues");
 const Project = require("../models/Project");
+const { createActivity } = require("../services/activityService");
 
 // Create an issue
 const createIssue = async (req, res) => {
@@ -17,6 +18,12 @@ const createIssue = async (req, res) => {
       createdBy: req.user.userId,
       assignedTo: assignedTo || null,
     });
+    await createActivity({
+    issue: issue._id,
+    project: issue.project,
+    user: req.user.userId,
+    action: "ISSUE_CREATED",
+});
 
     const populatedIssue = await Issue.findById(issue._id)
       .populate("project", "name description")
@@ -98,9 +105,19 @@ const getIssueById = async (req, res) => {
 
 
 // Update an issue
+
+
+    // Update an issue
 const updateIssue = async (req, res) => {
   try {
-    const { title, description, status, priority,   labels, assignedTo } = req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      labels,
+      assignedTo,
+    } = req.body;
 
     const issue = await Issue.findById(req.params.id);
 
@@ -110,15 +127,142 @@ const updateIssue = async (req, res) => {
       });
     }
 
+    // Store old values before making changes
+    const oldStatus = issue.status;
+    const oldPriority = issue.priority;
+    const oldAssignedTo = issue.assignedTo
+      ? issue.assignedTo.toString()
+      : null;
+
+    const titleChanged =
+      title !== undefined && title !== issue.title;
+
+    const descriptionChanged =
+      description !== undefined &&
+      description !== issue.description;
+
+    const labelsChanged =
+      labels !== undefined &&
+      JSON.stringify(labels) !== JSON.stringify(issue.labels);
+
+    const statusChanged =
+      status !== undefined &&
+      status !== oldStatus;
+
+    const priorityChanged =
+      priority !== undefined &&
+      priority !== oldPriority;
+
+    const newAssignedTo = issue.assignedTo
+  ? issue.assignedTo.toString()
+  : null;
+
+const assignmentChanged =
+  assignedTo !== undefined &&
+  newAssignedTo !== oldAssignedTo;
+
+    // Existing issue update logic
     issue.title = title ?? issue.title;
     issue.description = description ?? issue.description;
     issue.status = status ?? issue.status;
     issue.priority = priority ?? issue.priority;
     issue.labels = labels ?? issue.labels;
     issue.assignedTo =
-      assignedTo !== undefined ? assignedTo : issue.assignedTo;
+      assignedTo !== undefined
+        ? assignedTo || null
+        : issue.assignedTo;
 
     await issue.save();
+
+    /*
+     * Create activity records
+     */
+
+    // Status changed
+    if (statusChanged) {
+      await createActivity({
+        issue: issue._id,
+        project: issue.project,
+        user: req.user.userId,
+        action: "STATUS_CHANGED",
+        details: {
+          from: oldStatus,
+          to: issue.status,
+        },
+      });
+    }
+
+    // Priority changed
+    if (priorityChanged) {
+      await createActivity({
+        issue: issue._id,
+        project: issue.project,
+        user: req.user.userId,
+        action: "PRIORITY_CHANGED",
+        details: {
+          from: oldPriority,
+          to: issue.priority,
+        },
+      });
+    }
+
+    // Assignment changed
+    // Assignment changed
+if (assignmentChanged) {
+  const savedAssignedTo = issue.assignedTo
+    ? issue.assignedTo.toString()
+    : null;
+
+  if (!savedAssignedTo) {
+    await createActivity({
+      issue: issue._id,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_UNASSIGNED",
+      details: {},
+    });
+  } else if (!oldAssignedTo) {
+    await createActivity({
+      issue: issue._id,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_ASSIGNED",
+      details: {
+        assignedTo: savedAssignedTo,
+      },
+    });
+  } else {
+    await createActivity({
+      issue: issue._id,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_REASSIGNED",
+      details: {
+        from: oldAssignedTo,
+        to: savedAssignedTo,
+      },
+    });
+  }
+}
+
+    // Other issue information changed
+    if (
+      titleChanged ||
+      descriptionChanged ||
+      labelsChanged
+    ) {
+      await createActivity({
+        issue: issue._id,
+        project: issue.project,
+        user: req.user.userId,
+        action: "ISSUE_UPDATED",
+        details: {
+          titleChanged,
+          descriptionChanged,
+          labelsChanged,
+        },
+      });
+    }
 
     const updatedIssue = await Issue.findById(issue._id)
       .populate("project", "name description")
@@ -135,6 +279,7 @@ const updateIssue = async (req, res) => {
       error: error.message,
     });
   }
+
 };
 
 

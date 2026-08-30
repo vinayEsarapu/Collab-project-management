@@ -83,8 +83,58 @@ const createComment = async (req, res) => {
     });
   }
 };
+// Update own comment
+const updateComment = async (req, res) => {
+  try {
+    const { content } = req.body;
 
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        message: "Comment cannot be empty",
+      });
+    }
+
+    const comment = req.comment;
+
+    comment.content = content.trim();
+
+    await comment.save();
+
+    const populatedComment = await Comment.findById(comment._id)
+      .populate("createdBy", "name email");
+
+    res.status(200).json({
+      message: "Comment updated successfully",
+      comment: populatedComment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update comment",
+      error: error.message,
+    });
+  }
+};
+
+// Delete own comment
+const deleteComment = async (req, res) => {
+  try {
+    const comment = req.comment;
+
+    await Comment.findByIdAndDelete(comment._id);
+
+    res.status(200).json({
+      message: "Comment deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to delete comment",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   getComments,
   createComment,
+   updateComment,
+  deleteComment,
 };

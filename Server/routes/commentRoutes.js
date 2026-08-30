@@ -3,9 +3,16 @@ const express = require("express");
 const {
   getComments,
   createComment,
+  updateComment,
+  deleteComment,
 } = require("../controllers/commentController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+
+const {
+  authorizeCommentMember,
+  authorizeCommentAuthor,
+} = require("../middleware/commentauthorization");
 
 const router = express.Router();
 
@@ -13,6 +20,7 @@ const router = express.Router();
 router.get(
   "/issue/:issueId",
   authMiddleware,
+  authorizeCommentMember,
   getComments
 );
 
@@ -20,7 +28,24 @@ router.get(
 router.post(
   "/issue/:issueId",
   authMiddleware,
+  authorizeCommentMember,
   createComment
+);
+
+// Update own comment
+router.put(
+  "/:commentId",
+  authMiddleware,
+  authorizeCommentAuthor,
+  updateComment
+);
+
+// Delete own comment
+router.delete(
+  "/:commentId",
+  authMiddleware,
+  authorizeCommentAuthor,
+  deleteComment
 );
 
 module.exports = router;
