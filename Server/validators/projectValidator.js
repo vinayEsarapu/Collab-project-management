@@ -35,12 +35,14 @@ const validateProject = [
   .isArray()
   .withMessage("Tasks must be an array"),
 
-body("tasks.*")
+body("tasks.*.title")
   .optional()
   .isString()
   .trim()
   .notEmpty()
-  .withMessage("Each task must be a non-empty string"),
+  .withMessage("Each task must have a non-empty title")
+  .isLength({ max: 200 })
+  .withMessage("Task title cannot exceed 200 characters"),
 
   (req, res, next) => {
     const errors = validationResult(req);

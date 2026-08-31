@@ -9,6 +9,10 @@ function Navbar() {
   const navigate = useNavigate();
 
   const navItems = [
+     {
+    name: "Home",
+    path: "/",
+  },
     {
       name: "Dashboard",
       path: "/dashboard",
@@ -34,13 +38,11 @@ function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 
         {/* Logo */}
-        <NavLink
-          to="/dashboard"
-          onClick={() => setIsMenuOpen(false)}
-          className="text-lg font-bold text-white"
-        >
-          Collab PM
-        </NavLink>
+        <div
+  className="cursor-default text-lg font-bold text-white transition-colors duration-200 hover:text-indigo-300"
+>
+  Collab PM
+</div>
 
         {/* Desktop Navigation */}
         <nav className="hidden items-center gap-1 md:flex">

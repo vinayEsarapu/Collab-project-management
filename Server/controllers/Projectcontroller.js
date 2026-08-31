@@ -1,5 +1,162 @@
-const Project = require("../models/Project");
-const User = require("../models/User");
+const Project = require("../models/Project.js");
+const User = require("../models/user.js");
+const ProjectActivity = require("../models/ProjectActivity.js");
+const mongoose = require("mongoose");
+const ProjectLog = require("../models/ProjectLog");
+
+
+
+// ADD TASK - OWNER ONLY
+const addTask = async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        message: "Task title is required",
+      });
+    }
+
+    const project = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user.userId,
+    });
+
+    if (!project) {
+      return res.status(403).json({
+        message: "You are not authorized to modify tasks.",
+      });
+    }
+
+    project.tasks.push({
+      title: title.trim(),
+    });
+
+    await project.save();
+
+    await ProjectLog.create({
+      project: project._id,
+      user: req.user.userId,
+      action: "TASK_ADDED",
+      description: `Task "${title.trim()}" was added.`,
+    });
+
+    res.status(201).json({
+      message: "Task added successfully",
+      project,
+    });
+  } catch (error) {
+    console.error("Add task error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// UPDATE TASK - OWNER ONLY
+const updateTask = async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        message: "Task title is required",
+      });
+    }
+
+    const project = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user.userId,
+    });
+
+    if (!project) {
+      return res.status(403).json({
+        message: "You are not authorized to modify tasks.",
+      });
+    }
+
+    const task = project.tasks.id(req.params.taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    const oldTitle = task.title;
+
+    task.title = title.trim();
+
+    await project.save();
+
+    await ProjectLog.create({
+      project: project._id,
+      user: req.user.userId,
+      action: "TASK_UPDATED",
+      description: `Task "${oldTitle}" was changed to "${title.trim()}".`,
+    });
+
+    res.status(200).json({
+      message: "Task updated successfully",
+      project,
+    });
+  } catch (error) {
+    console.error("Update task error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// DELETE TASK - OWNER ONLY
+const deleteTask = async (req, res) => {
+  try {
+    const project = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user.userId,
+    });
+
+    if (!project) {
+      return res.status(403).json({
+        message: "You are not authorized to modify tasks.",
+      });
+    }
+
+    const task = project.tasks.id(req.params.taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    const deletedTitle = task.title;
+
+    task.deleteOne();
+
+    await project.save();
+
+    await ProjectLog.create({
+      project: project._id,
+      user: req.user.userId,
+      action: "TASK_DELETED",
+      description: `Task "${deletedTitle}" was deleted.`,
+    });
+
+    res.status(200).json({
+      message: "Task deleted successfully",
+      project,
+    });
+  } catch (error) {
+    console.error("Delete task error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
 
 // CREATE PROJECT
 // CREATE PROJECT
@@ -10,64 +167,83 @@ const createProject = async (req, res) => {
       description,
       status,
       technologies,
-      members = []
+      tasks,
+      members,
     } = req.body;
 
-    // Prevent invalid members value
+    // -----------------------------
+    // Validate members
+    // -----------------------------
+
     if (!Array.isArray(members)) {
       return res.status(400).json({
-        message: "Members must be an array"
+        message: "Members must be an array",
       });
     }
 
-    // Owner cannot be added as a project member
-    const ownerId = req.user.userId;
+    const ownerId = req.user.userId.toString();
 
-    if (members.some((memberId) => memberId.toString() === ownerId.toString())) {
-      return res.status(400).json({
-        message: "Project owner cannot be added as a member"
-      });
-    }
-
-    // Remove duplicate member IDs
-    const uniqueMemberIds = [
-      ...new Set(members.map((memberId) => memberId.toString()))
+    const selectedMembers = [
+      ...new Set(
+        members.map((memberId) => memberId.toString())
+      ),
     ];
 
-    // Verify that every selected user actually exists
-    const users = await User.find({
-      _id: { $in: uniqueMemberIds }
-    }).select("_id");
-
-    if (users.length !== uniqueMemberIds.length) {
+    if (selectedMembers.includes(ownerId)) {
       return res.status(400).json({
-        message: "One or more selected members do not exist"
+        message: "Project owner cannot be added as a member",
       });
     }
 
+    if (selectedMembers.length > 0) {
+      const users = await User.find({
+        _id: { $in: selectedMembers },
+      }).select("_id");
+
+      if (users.length !== selectedMembers.length) {
+        return res.status(400).json({
+          message: "One or more selected members do not exist",
+        });
+      }
+    }
+
+    // -----------------------------
+    // Create project
+    // -----------------------------
+
     const project = await Project.create({
-      title,
-      description,
+      title: title.trim(),
+      description: description.trim(),
       status,
-      technologies,
-      tasks,
-      owner: req.user.userId
-  
+      technologies: technologies || [],
+      tasks: tasks || [],
+      owner: req.user.userId,
+      members: selectedMembers,
+    });
+
+    // -----------------------------
+    // Create project activity
+    // -----------------------------
+
+    await ProjectActivity.create({
+      project: project._id,
+      user: req.user.userId,
+      action: "PROJECT_CREATED",
+      description: `Project "${project.title}" was created`,
     });
 
     res.status(201).json({
       message: "Project created successfully",
-      project
+      project,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Create project error:", error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
-
 
 // GET ALL PROJECTS
 // GET ALL PROJECTS
@@ -130,9 +306,10 @@ const getProjectById = async (req, res) => {
 
 
 // UPDATE PROJECT
+// UPDATE PROJECT
 const updateProject = async (req, res) => {
   try {
-    const { title, description, status, technologies , tasks} = req.body;
+    const { title, description, status, technologies } = req.body;
 
     const project = await Project.findOneAndUpdate(
       {
@@ -143,8 +320,7 @@ const updateProject = async (req, res) => {
         title,
         description,
         status,
-        technologies,
-        tasks
+        technologies
       },
       {
         new: true,
@@ -154,23 +330,114 @@ const updateProject = async (req, res) => {
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found"
+        message: "Project not found",
       });
     }
 
+    // Update only project-level information.
+    // Tasks have separate owner-only APIs.
+    project.title = title;
+    project.description = description;
+    project.status = status;
+    project.technologies = technologies;
+
+    await project.save();
+
+    // Project.updatedAt is automatically updated by timestamps.
+
+    await ProjectActivity.create({
+      project: project._id,
+      user: req.user.userId,
+      action: "PROJECT_UPDATED",
+      description: `Project "${project.title}" was updated`,
+    });
+
     res.status(200).json({
       message: "Project updated successfully",
-      project
+      project,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Update project error:", error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
+// ADD PROJECT TASK - OWNER ONLY
+
+
+// UPDATE PROJECT TASK - OWNER ONLY
+
+// DELETE PROJECT TASK - OWNER ONLY
+
+// GET PROJECT ACTIVITY
+const getProjectActivity = async (req, res) => {
+  try {
+    const projectId = req.params.id;
+
+    const page = Math.max(
+      parseInt(req.query.page, 10) || 1,
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        parseInt(req.query.limit, 10) || 10,
+        1
+      ),
+      50
+    );
+
+    const project = await Project.findOne({
+      _id: projectId,
+      $or: [
+        { owner: req.user.userId },
+        { members: req.user.userId },
+      ],
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        message:
+          "Project not found or you are not authorized to access it",
+      });
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [activities, total] = await Promise.all([
+      ProjectActivity.find({
+        project: projectId,
+      })
+        .populate("user", "name userCode")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      ProjectActivity.countDocuments({
+        project: projectId,
+      }),
+    ]);
+
+    res.status(200).json({
+      activities,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get project activity error:", error);
+
+    res.status(500).json({
+      message: "Unable to load project activity",
+    });
+  }
+};
 
 // DELETE PROJECT
 const deleteProject = async (req, res) => {
@@ -194,6 +461,29 @@ const deleteProject = async (req, res) => {
 
     res.status(500).json({
       message: "Server error"
+    });
+  }
+};
+
+// Get all registered users for project member selection
+const getUsersForMemberSelection = async (req, res) => {
+  try {
+    const users = await User.find({
+      _id: { $ne: req.user.userId },
+    })
+      .select("_id userCode name email")
+      .sort({ name: 1 });
+
+    res.status(200).json({
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error("Failed to fetch users:", error);
+
+    res.status(500).json({
+      message: "Failed to fetch registered users",
+      error: error.message,
     });
   }
 };
@@ -234,9 +524,9 @@ const addMember = async (req, res) => {
   });
 }
 
-     const alreadyMember = project.members.some(
-      (memberId) => memberId.toString() === userId
-    );
+    const alreadyMember = project.members.some(
+  (member) => member._id.toString() === userId
+);
 
     if (alreadyMember) {
       return res.status(400).json({
@@ -248,6 +538,14 @@ const addMember = async (req, res) => {
     project.members.push(userId);
 
     await project.save();
+
+    await ProjectActivity.create({
+  project: project._id,
+  user: req.user.userId,
+  action: "MEMBER_ADDED",
+  description: `${user.name} was added to the project`,
+});
+
 
     res.status(200).json({
       message: "Member added successfully",
@@ -286,20 +584,30 @@ const removeMember = async (req, res) => {
 }
 
     const isMember = project.members.some(
-      (memberId) => memberId.toString() === userId
-    );
-
+  (member) => member._id.toString() === userId
+);
     if (!isMember) {
       return res.status(404).json({
         message: "User is not a member of this project"
       });
     }
 
+   const removedMember = project.members.find(
+  (member) => member._id.toString() === userId
+);
+
     project.members = project.members.filter(
       (memberId) => memberId.toString() !== userId
     );
 
     await project.save();
+
+    await ProjectActivity.create({
+  project: project._id,
+  user: req.user.userId,
+  action: "MEMBER_REMOVED",
+  description: `${removedMember.name} was removed from the project`,
+});
 
     res.status(200).json({
       message: "Member removed successfully",
@@ -360,5 +668,10 @@ module.exports = {
   deleteProject,
   addMember,
   removeMember,
-   searchUsers,
+  getUsersForMemberSelection,
+  searchUsers,
+  addTask,
+  updateTask,
+  deleteTask,
+  getProjectActivity,
 };

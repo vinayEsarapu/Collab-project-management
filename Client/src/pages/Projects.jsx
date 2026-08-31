@@ -73,7 +73,11 @@ function Projects() {
             </div>
 
             <button
-              onClick={() => navigate("/projects/new")}
+              onClick={() =>
+  navigate("/projects/new", {
+    state: { from: "/projects" },
+  })
+}
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-400"
             >
               <span className="text-lg transition-transform duration-200 group-hover:rotate-90">
@@ -165,7 +169,11 @@ function Projects() {
 
               {!searchTerm && (
                 <button
-                  onClick={() => navigate("/projects/new")}
+                  onClick={() =>
+  navigate("/projects/new", {
+    state: { from: "/projects" },
+  })
+}
                   className="mt-5 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
                 >
                   Create your first project
