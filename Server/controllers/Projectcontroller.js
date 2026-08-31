@@ -2,16 +2,57 @@ const Project = require("../models/Project");
 const User = require("../models/User");
 
 // CREATE PROJECT
+// CREATE PROJECT
 const createProject = async (req, res) => {
   try {
-    const { title, description, status, technologies } = req.body;
+    const {
+      title,
+      description,
+      status,
+      technologies,
+      members = []
+    } = req.body;
+
+    // Prevent invalid members value
+    if (!Array.isArray(members)) {
+      return res.status(400).json({
+        message: "Members must be an array"
+      });
+    }
+
+    // Owner cannot be added as a project member
+    const ownerId = req.user.userId;
+
+    if (members.some((memberId) => memberId.toString() === ownerId.toString())) {
+      return res.status(400).json({
+        message: "Project owner cannot be added as a member"
+      });
+    }
+
+    // Remove duplicate member IDs
+    const uniqueMemberIds = [
+      ...new Set(members.map((memberId) => memberId.toString()))
+    ];
+
+    // Verify that every selected user actually exists
+    const users = await User.find({
+      _id: { $in: uniqueMemberIds }
+    }).select("_id");
+
+    if (users.length !== uniqueMemberIds.length) {
+      return res.status(400).json({
+        message: "One or more selected members do not exist"
+      });
+    }
 
     const project = await Project.create({
       title,
       description,
       status,
       technologies,
+      tasks,
       owner: req.user.userId
+  
     });
 
     res.status(201).json({
@@ -66,8 +107,8 @@ const getProjectById = async (req, res) => {
         { members: req.user.userId }
       ]
     })
-      .populate("owner", "name")
-      .populate("members", "name");
+      .populate("owner", "name userCode")
+      .populate("members", "name userCode");
 
     if (!project) {
       return res.status(404).json({
@@ -91,7 +132,7 @@ const getProjectById = async (req, res) => {
 // UPDATE PROJECT
 const updateProject = async (req, res) => {
   try {
-    const { title, description, status, technologies } = req.body;
+    const { title, description, status, technologies , tasks} = req.body;
 
     const project = await Project.findOneAndUpdate(
       {
@@ -102,7 +143,8 @@ const updateProject = async (req, res) => {
         title,
         description,
         status,
-        technologies
+        technologies,
+        tasks
       },
       {
         new: true,
@@ -273,14 +315,30 @@ const removeMember = async (req, res) => {
 };
 
 // SEARCH REGISTERED USERS FOR PROJECT MEMBERS
+// SEARCH REGISTERED USERS FOR PROJECT MEMBERS
 const searchUsers = async (req, res) => {
   try {
     const { search = "" } = req.query;
 
+    const searchValue = search.trim();
+
     const users = await User.find({
-      name: { $regex: search.trim(), $options: "i" },
+      $or: [
+        {
+          name: {
+            $regex: searchValue,
+            $options: "i"
+          }
+        },
+        {
+          userCode: {
+            $regex: searchValue,
+            $options: "i"
+          }
+        }
+      ]
     })
-      .select("name")
+      .select("name userCode")
       .limit(10);
 
     res.status(200).json({

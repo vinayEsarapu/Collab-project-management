@@ -189,7 +189,6 @@ const updateIssue = async (req, res) => {
         : issue.assignedTo;
 
     await issue.save();
-
     /*
      * Create activity records
      */
@@ -240,7 +239,7 @@ const updateIssue = async (req, res) => {
       user: req.user.userId,
       action: "ISSUE_ASSIGNED",
       details: {
-        assignedTo: savedAssignedTo,
+         assignedTo: normalizedNewAssignedTo,
       },
     });
   } else {
@@ -250,8 +249,8 @@ const updateIssue = async (req, res) => {
       user: req.user.userId,
       action: "ISSUE_REASSIGNED",
       details: {
-        from: oldAssignedTo,
-        to: savedAssignedTo,
+         from: oldAssignedTo,
+        to: normalizedNewAssignedTo,
       },
     });
   }

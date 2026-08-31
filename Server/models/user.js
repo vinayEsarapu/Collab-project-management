@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6
     },
+   
+   userCode: {
+     type: String,
+     unique: true,
+     required: true,
+     immutable: true,
+},
 
     role: {
       type: String,
@@ -33,6 +40,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-const User = mongoose.model("User", userSchema);
+const User =
+  mongoose.models.User || mongoose.model("User", userSchema);
 
 module.exports = User;

@@ -1,6 +1,8 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const User = require("../models/user.js");
+
+
 
 const registerUser = async (req, res) => {
   try {
@@ -22,16 +24,38 @@ const registerUser = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const lastUser = await User.findOne({})
+  .sort({ createdAt: -1 })
+  .select("userCode");
+
+let nextNumber = 101;
+
+if (lastUser?.userCode) {
+  const number = parseInt(
+    lastUser.userCode.replace("USR-", ""),
+    10
+  );
+
+  if (!Number.isNaN(number)) {
+    nextNumber = number + 1;
+  }
+}
+
+const userCode = `USR-${nextNumber}`;
+
     const user = await User.create({
       name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      userCode
     });
+    
 
     res.status(201).json({
       message: "User registered successfully",
       user: {
         id: user._id,
+        userCode: user.userCode,
         name: user.name,
         email: user.email,
         role: user.role
@@ -109,6 +133,7 @@ const loginUser = async (req, res) => {
       message: "Login successful",
       user: {
         id: user._id,
+        userCode: user.userCode,
         name: user.name,
         email: user.email,
         role: user.role

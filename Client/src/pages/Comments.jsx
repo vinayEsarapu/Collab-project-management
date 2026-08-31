@@ -13,7 +13,7 @@ function Comments() {
   const { user } = useAuth();
 
   const [comments, setComments] = useState([]);
-  const [issue, setIssue] = useState(null);
+  //const [issue, setIssue] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -134,9 +134,9 @@ function Comments() {
       );
 
       // Get issue information if backend returns it
-      if (data.comments?.[0]?.issue) {
-        setIssue(data.comments[0].issue);
-      }
+      // if (data.comments?.[0]?.issue) {
+      //   setIssue(data.comments[0].issue);
+      // }
     } catch (error) {
       setError(
         error.response?.data?.message ||

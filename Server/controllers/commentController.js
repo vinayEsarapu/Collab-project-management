@@ -1,7 +1,9 @@
+const { createActivity } = require("../services/activityService");
 const mongoose = require("mongoose");
 const Comment = require("../models/comment");
 const Issue = require("../models/issues");
 const User = require("../models/user");
+
 
 // Get comments for an issue
 // Supports:
@@ -218,6 +220,16 @@ const createComment = async (req, res) => {
       createdBy: req.user.userId,
     });
 
+    await createActivity({
+  issue: issueId,
+  project: issue.project,
+  user: req.user.userId,
+  action: "COMMENT_ADDED",
+  details: {
+    commentId: comment._id.toString(),
+  },
+});
+
     const populatedComment =
       await Comment.findById(comment._id)
         .populate(
@@ -255,6 +267,16 @@ const updateComment = async (req, res) => {
     comment.content = content.trim();
 
     await comment.save();
+
+    await createActivity({
+  issue: comment.issue,
+  project: req.comment.project,
+  user: req.user.userId,
+  action: "COMMENT_UPDATED",
+  details: {
+    commentId: comment._id.toString(),
+  },
+});
 
     const populatedComment =
       await Comment.findById(comment._id)

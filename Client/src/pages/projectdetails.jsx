@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 //import projectService from "../services/projectservices";
 import { getProjectById ,addMember,
   removeMember, searchUsers,} from "../services/projectservices";
-import { useAuth } from "../context/authcontext";
+import { useAuth } from "../context/Authcontext.jsx";
 
 
 function ProjectDetails() {
@@ -123,40 +123,8 @@ const handleSelectUser = async (selectedUser) => {
     setIsAddingMember(false);
   }
 };
-  const handleAddMember = async (event) => {
-  event.preventDefault();
-
-  setMemberError("");
-  setMemberSuccess("");
-
-  const trimmedUserId = memberUserId.trim();
-
-  if (!trimmedUserId) {
-    setMemberError("User ID is required.");
-    return;
-  }
-
-  try {
-    setIsAddingMember(true);
-
-    const updatedProject = await addMember(id, trimmedUserId);
-
-    const refreshedProject = await getProjectById(id);
-
-    setProject(refreshedProject || updatedProject);
-    setMemberUserId("");
-    setMemberSuccess("Member added successfully.");
-  } catch (error) {
-    console.error("Failed to add member:", error);
-
-    setMemberError(
-      error.response?.data?.message ||
-        "Unable to add member. Please try again."
-    );
-  } finally {
-    setIsAddingMember(false);
-  }
-};
+  
+  
 
 const handleRemoveMember = async (userId) => {
   setMemberError("");
@@ -236,10 +204,10 @@ const handleRemoveMember = async (userId) => {
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Back */}
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/projects")}
           className="mb-8 text-sm text-slate-400 transition-colors hover:text-white"
         >
-          ← Back to Dashboard
+          ← Back to Projects
         </button>
 
         {/* Hero */}
@@ -361,7 +329,7 @@ const handleRemoveMember = async (userId) => {
     </div>
 
     <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-      {project.members?.length || 0+1} members
+      {(project.members?.length || 0)+1} members
     </span>
   </div>
 
@@ -410,7 +378,7 @@ const handleRemoveMember = async (userId) => {
       type="text"
       value={userSearch}
       onChange={handleUserSearch}
-      placeholder="Search registered users by name..."
+      placeholder="Search by userId and name..."
       className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-indigo-500/10"
     />
 
@@ -434,9 +402,15 @@ const handleRemoveMember = async (userId) => {
               {user.name.charAt(0).toUpperCase()}
             </div>
 
-            <span className="truncate text-sm text-slate-200">
-              {user.name}
-            </span>
+            <div className="min-w-0">
+             <p className="truncate text-sm font-medium text-slate-200">
+              {user.userCode}
+            </p>
+
+           <p className="truncate text-xs text-slate-400">
+           {user.name}
+           </p>
+         </div>
           </button>
         ))}
       </div>
@@ -464,16 +438,7 @@ const handleRemoveMember = async (userId) => {
 
   {/* Members list */}
   {/* Owner */}
-<div className="mt-6">
-  <h3 className="mb-3 text-sm font-medium text-slate-400">
-    Owner
-  </h3>
 
-  <MemberCard
-    member={project.owner}
-    isOwner
-  />
-</div>
 
 {/* Members */}
 <div className="mt-6">
@@ -485,13 +450,12 @@ const handleRemoveMember = async (userId) => {
     <div className="grid gap-3 sm:grid-cols-2">
       {project.members.map((member) => (
         <MemberCard
-          key={member._id}
-          member={member}
-          onRemove={handleRemoveMember}
-          isRemoving={removingMemberId === member._id}
-          isOwner={isOwner}
-        />
-      ))}
+         key={member._id}
+         member={member}
+         onRemove={isOwner ? handleRemoveMember : undefined}
+         isRemoving={removingMemberId === member._id}
+       />
+     ))}
     </div>
   ) : (
     <div className="rounded-xl border border-dashed border-white/10 px-6 py-8 text-center">
@@ -567,15 +531,21 @@ function MemberCard({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-200">
+       <p className="truncate text-sm font-medium text-slate-200">
           {name}
-        </p>
+       </p>
 
-        {isOwner && (
-          <p className="mt-1 text-xs text-indigo-300">
-            Owner
-          </p>
+       {member?.userCode && (
+         <p className="mt-1 text-xs text-slate-500">
+            {member.userCode}
+         </p>
         )}
+
+       {isOwner && (
+         <p className="mt-1 text-xs text-indigo-300">
+           Owner
+         </p>
+     )}
       </div>
 
       {!isOwner && member?._id && onRemove && (

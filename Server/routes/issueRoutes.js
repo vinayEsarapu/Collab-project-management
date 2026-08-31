@@ -25,7 +25,7 @@ const {
 
 const validate = require("../middleware/validationMiddleware");
 
-const checkIssueAccess = require("../middleware/issueauthorization");
+const {checkIssueAccess} = require("../middleware/issueauthorization");
 
 const router = express.Router();
 

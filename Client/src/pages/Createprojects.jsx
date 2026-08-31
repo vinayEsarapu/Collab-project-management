@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProject } from "../services/projectservices";
+import { createProject ,  searchUsers } from "../services/projectservices";
 function CreateProject() {
   const navigate = useNavigate();
 
@@ -8,11 +8,19 @@ function CreateProject() {
     title: "",
     description: "",
     status: "Planning",
-    technologies: "",
   });
+  const [technologyInput, setTechnologyInput] = useState("");
+const [technologies, setTechnologies] = useState([]);
+
+const [taskInput, setTaskInput] = useState("");
+const [tasks, setTasks] = useState([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -22,6 +30,94 @@ function CreateProject() {
       [name]: value,
     }));
   };
+
+  const handleAddTechnology = () => {
+  const technology = technologyInput.trim();
+
+  if (!technology) {
+    return;
+  }
+
+  if (technologies.includes(technology)) {
+    setError("This technology has already been added.");
+    return;
+  }
+
+  setTechnologies((previous) => [...previous, technology]);
+  setTechnologyInput("");
+  setError("");
+};
+
+const handleRemoveTechnology = (technologyToRemove) => {
+  setTechnologies((previous) =>
+    previous.filter(
+      (technology) => technology !== technologyToRemove
+    )
+  );
+};
+
+const handleAddTask = () => {
+  const task = taskInput.trim();
+
+  if (!task) {
+    return;
+  }
+
+  setTasks((previous) => [...previous, task]);
+  setTaskInput("");
+  setError("");
+};
+
+const handleRemoveTask = (taskIndex) => {
+  setTasks((previous) =>
+    previous.filter((_, index) => index !== taskIndex)
+  );
+};
+
+  const handleMemberSearch = async (event) => {
+  const value = event.target.value;
+
+  setMemberSearch(value);
+
+  if (!value.trim()) {
+    setAvailableUsers([]);
+    return;
+  }
+
+  try {
+    setIsSearchingUsers(true);
+
+    const users = await searchUsers(value);
+
+    setAvailableUsers(users);
+  } catch (error) {
+    console.error("Failed to search users:", error);
+    setAvailableUsers([]);
+  } finally {
+    setIsSearchingUsers(false);
+  }
+};
+
+const addMember = (user) => {
+  const alreadySelected = selectedMembers.some(
+    (member) => member._id === user._id
+  );
+
+  if (alreadySelected) {
+    return;
+  }
+
+  setSelectedMembers((previous) => [
+    ...previous,
+    user,
+  ]);
+};
+
+const removeMember = (userId) => {
+  setSelectedMembers((previous) =>
+    previous.filter((member) => member._id !== userId)
+  );
+};
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -41,15 +137,13 @@ function CreateProject() {
     try {
       setIsSubmitting(true);
 
-      const projectData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        status: formData.status,
-        technologies: formData.technologies
-          .split(",")
-          .map((technology) => technology.trim())
-          .filter(Boolean),
-      };
+     const projectData = {
+  title: formData.title.trim(),
+  description: formData.description.trim(),
+  status: formData.status,
+  technologies,
+  tasks,
+};
 
       await createProject(projectData);
 
@@ -167,28 +261,230 @@ function CreateProject() {
           </div>
 
           {/* Technologies */}
-          <div className="mb-8">
-            <label
-              htmlFor="technologies"
-              className="mb-2 block text-sm font-medium text-slate-200"
+          {/* Technologies */}
+<div className="mb-8">
+  <label
+    htmlFor="technologyInput"
+    className="mb-2 block text-sm font-medium text-slate-200"
+  >
+    Technologies
+  </label>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      id="technologyInput"
+      type="text"
+      value={technologyInput}
+      onChange={(event) => setTechnologyInput(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handleAddTechnology();
+        }
+      }}
+      placeholder="e.g. React.js"
+      className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-indigo-500/10"
+    />
+
+    <button
+      type="button"
+      onClick={handleAddTechnology}
+      className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-5 py-3 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
+    >
+      + Add
+    </button>
+  </div>
+
+  {technologies.length > 0 && (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {technologies.map((technology) => (
+        <div
+          key={technology}
+          className="flex items-center gap-2 rounded-lg border border-indigo-400/10 bg-indigo-400/5 px-3 py-2 text-xs font-medium text-indigo-300"
+        >
+          <span>{technology}</span>
+
+          <button
+            type="button"
+            onClick={() => handleRemoveTechnology(technology)}
+            className="text-indigo-300/60 transition hover:text-red-300"
+            aria-label={`Remove ${technology}`}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
+          {/* Members */}
+<div className="mb-8">
+  <label
+    htmlFor="memberSearch"
+    className="mb-2 block text-sm font-medium text-slate-200"
+  >
+    Project members
+  </label>
+
+  <input
+    id="memberSearch"
+    type="text"
+    value={memberSearch}
+    onChange={handleMemberSearch}
+    placeholder="Search by User ID or name..."
+    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-indigo-500/10"
+  />
+
+  <p className="mt-2 text-xs text-slate-500">
+    Search registered users using their User ID or name.
+  </p>
+
+  {/* Search results */}
+  {memberSearch.trim() && (
+    <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-slate-900">
+      {isSearchingUsers ? (
+        <div className="px-4 py-3 text-sm text-slate-400">
+          Searching...
+        </div>
+      ) : availableUsers.length > 0 ? (
+        availableUsers.map((user) => {
+          const alreadySelected = selectedMembers.some(
+            (member) => member._id === user._id
+          );
+
+          return (
+            <div
+              key={user._id}
+              className="flex items-center justify-between border-b border-white/5 px-4 py-3 last:border-b-0"
             >
-              Technologies
-            </label>
+              <div>
+                <p className="text-sm font-medium text-white">
+                  {user.userCode}
+                </p>
 
-            <input
-              id="technologies"
-              name="technologies"
-              type="text"
-              value={formData.technologies}
-              onChange={handleChange}
-              placeholder="React, Node.js, MongoDB, Express"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-indigo-500/10"
-            />
+                <p className="text-xs text-slate-400">
+                  {user.name}
+                </p>
+              </div>
 
-            <p className="mt-2 text-xs text-slate-500">
-              Separate technologies using commas.
-            </p>
+              <button
+                type="button"
+                disabled={alreadySelected}
+                onClick={() => addMember(user)}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {alreadySelected ? "Added" : "Add"}
+              </button>
+            </div>
+          );
+        })
+      ) : (
+        <div className="px-4 py-3 text-sm text-slate-400">
+          No users found.
+        </div>
+      )}
+    </div>
+  )}
+
+  {/* Selected members */}
+  {selectedMembers.length > 0 && (
+    <div className="mt-5">
+      <p className="mb-3 text-sm font-medium text-slate-200">
+        Selected members
+      </p>
+
+      <div className="space-y-2">
+        {selectedMembers.map((member) => (
+          <div
+            key={member._id}
+            className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+          >
+            <div>
+              <p className="text-sm font-medium text-white">
+                {member.userCode}
+              </p>
+
+              <p className="text-xs text-slate-400">
+                {member.name}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => removeMember(member._id)}
+              className="text-xs font-medium text-red-300 transition hover:text-red-200"
+            >
+              Remove
+            </button>
           </div>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
+
+{/* Tasks */}
+<div className="mb-8">
+  <label
+    htmlFor="taskInput"
+    className="mb-2 block text-sm font-medium text-slate-200"
+  >
+    Project Tasks
+  </label>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      id="taskInput"
+      type="text"
+      value={taskInput}
+      onChange={(event) => setTaskInput(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handleAddTask();
+        }
+      }}
+      placeholder="e.g. Design database schema"
+      className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-indigo-500/10"
+    />
+
+    <button
+      type="button"
+      onClick={handleAddTask}
+      className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-5 py-3 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
+    >
+      + Add
+    </button>
+  </div>
+
+  {tasks.length > 0 && (
+    <div className="mt-4 space-y-2">
+      {tasks.map((task, index) => (
+        <div
+          key={`${task}-${index}`}
+          className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3"
+        >
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-semibold text-indigo-300">
+            {index + 1}
+          </span>
+
+          <span className="min-w-0 flex-1 break-words text-sm text-slate-300">
+            {task}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => handleRemoveTask(index)}
+            className="shrink-0 text-xs font-medium text-slate-500 transition hover:text-red-300"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
           {/* Buttons */}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

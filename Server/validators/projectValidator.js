@@ -30,6 +30,18 @@ const validateProject = [
     .isString()
     .withMessage("Each technology must be a string"),
 
+  body("tasks")
+  .optional()
+  .isArray()
+  .withMessage("Tasks must be an array"),
+
+body("tasks.*")
+  .optional()
+  .isString()
+  .trim()
+  .notEmpty()
+  .withMessage("Each task must be a non-empty string"),
+
   (req, res, next) => {
     const errors = validationResult(req);
 

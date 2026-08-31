@@ -208,7 +208,18 @@ function ProjectCard({ project, onView }) {
   };
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/30 hover:bg-white/[0.05] hover:shadow-2xl hover:shadow-indigo-950/30">
+    <article
+  onClick={onView}
+  role="button"
+  tabIndex={0}
+  onKeyDown={(event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onView();
+    }
+  }}
+  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/30 hover:bg-white/[0.05] hover:shadow-2xl hover:shadow-indigo-950/30"
+>
 
       <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl transition-all duration-500 group-hover:bg-indigo-500/20" />
 
@@ -267,13 +278,11 @@ function ProjectCard({ project, onView }) {
                 ).toLocaleDateString()
               : "Recently"}
           </p>
+           <span className="text-xs font-medium text-slate-500 transition-colors duration-200 group-hover:text-indigo-300">
+    Open project →
+  </span>
 
-          <button
-            onClick={onView}
-            className="text-sm font-medium text-indigo-400 transition-all duration-200 group-hover:translate-x-1 group-hover:text-indigo-300"
-          >
-            View →
-          </button>
+          
         </div>
       </div>
     </article>
