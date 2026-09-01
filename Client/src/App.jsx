@@ -12,6 +12,7 @@ import Projects from "./pages/Projects";
 import Home from "./pages/Home";
 import Activity from "./pages/Activity";
 import Comments from "./pages/Comments";
+import ProjectActivity from "./pages/ProjectActivity";
 
 function ProtectedLayout() {
   return (
@@ -57,10 +58,20 @@ function App() {
             element={<ProjectDetails />}
           />
 
+          <Route
+  path="/projects/:id/activity"
+  element={<ProjectActivity />}
+/>
+
            <Route
             path="/projects/:id/issues"
             element={<Issues />}
           />
+
+          <Route
+  path="/projects/:id/comments"
+  element={<Comments />}
+/>
 
           <Route
            path="/projects/:id/issues/:issueId"

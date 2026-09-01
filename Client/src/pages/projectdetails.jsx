@@ -6,9 +6,9 @@ import {
   addTask,
   updateTask,
   deleteTask,
-  getProjectActivity,
-   getUsersForMemberSelection,
-    
+  getUsersForMemberSelection,
+  addMember,
+  removeMember,
 } from "../services/projectservices";
 import { useAuth } from "../context/Authcontext.jsx";
 
@@ -28,32 +28,28 @@ const [taskSuccess, setTaskSuccess] = useState("");
 const [isAddingTask, setIsAddingTask] = useState(false);
 const [updatingTaskId, setUpdatingTaskId] = useState(null);
 const [deletingTaskId, setDeletingTaskId] = useState(null);
-const [activityDate, setActivityDate] = useState("");
-const [activities, setActivities] = useState([]);
-const [activityPage, setActivityPage] = useState(1);
 const [availableUsers, setAvailableUsers] = useState([]);
 const [showMemberSelector, setShowMemberSelector] = useState(false);
 const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-const [activityPagination, setActivityPagination] = useState({
-  page: 1,
-  limit: 10,
-  total: 0,
-  totalPages: 0,
-});
-const [isLoadingActivity, setIsLoadingActivity] = useState(false);
-const [activityError, setActivityError] = useState("");
 const [isEditingProject, setIsEditingProject] = useState(false);
 
 const [editTitle, setEditTitle] = useState("");
 const [editDescription, setEditDescription] = useState("");
 const [editStatus, setEditStatus] = useState("");
-const [editTechnologies, setEditTechnologies] = useState("");
+//const [editTechnologies, setEditTechnologies] = useState("");
+const [editTechnologies, setEditTechnologies] = useState([]);
+const [technologyInput, setTechnologyInput] = useState("");
 
 const [editMembers, setEditMembers] = useState([]);
 const [isSavingProject, setIsSavingProject] = useState(false);
 
 const [projectEditError, setProjectEditError] = useState("");
 const [projectEditSuccess, setProjectEditSuccess] = useState("");
+
+const [commentText, setCommentText] = useState("");
+const [commentError, setCommentError] = useState("");
+const [commentSuccess, setCommentSuccess] = useState("");
+const [isPostingComment, setIsPostingComment] = useState(false);
 const isOwner =
   user?._id &&
   project?.owner &&
@@ -98,9 +94,8 @@ const isOwner =
   setEditDescription(project.description || "");
   setEditStatus(project.status || "Planning");
 
-  setEditTechnologies(
-    project.technologies?.join(", ") || ""
-  );
+  setEditTechnologies(project.technologies || []);
+setTechnologyInput("");
 
   setEditMembers(
     project.members?.map((member) =>
@@ -123,12 +118,45 @@ const handleCancelEditProject = () => {
   setEditDescription("");
   setEditStatus("");
   setEditTechnologies("");
+  setTechnologyInput("");
   setEditMembers([]);
 
   setProjectEditError("");
   setProjectEditSuccess("");
 };
 
+const handleAddTechnology = () => {
+  const technology = technologyInput.trim();
+
+  if (!technology) {
+    return;
+  }
+
+  const alreadyExists = editTechnologies.some(
+    (item) =>
+      item.toLowerCase() === technology.toLowerCase()
+  );
+
+  if (alreadyExists) {
+    setTechnologyInput("");
+    return;
+  }
+
+  setEditTechnologies((current) => [
+    ...current,
+    technology,
+  ]);
+
+  setTechnologyInput("");
+};
+
+const handleRemoveTechnology = (technologyToRemove) => {
+  setEditTechnologies((current) =>
+    current.filter(
+      (technology) => technology !== technologyToRemove
+    )
+  );
+};
 const handleSaveProject = async () => {
   const title = editTitle.trim();
   const description = editDescription.trim();
@@ -143,10 +171,7 @@ const handleSaveProject = async () => {
     return;
   }
 
-  const technologies = editTechnologies
-    .split(",")
-    .map((technology) => technology.trim())
-    .filter(Boolean);
+  
 
   try {
     setIsSavingProject(true);
@@ -157,7 +182,7 @@ const handleSaveProject = async () => {
       title,
       description,
       status: editStatus,
-      technologies,
+      technologies: editTechnologies,
       members: editMembers,
     });
 
@@ -169,7 +194,7 @@ const handleSaveProject = async () => {
       "Project updated successfully."
     );
 
-    await loadActivity(1);
+    //await loadActivity(1);
   } catch (error) {
     console.error(
       "Failed to update project:",
@@ -184,56 +209,6 @@ const handleSaveProject = async () => {
     setIsSavingProject(false);
   }
 };
-const loadActivity = async (
-  page = 1,
-  date = activityDate
-) => {
-  try {
-    setIsLoadingActivity(true);
-    setActivityError("");
-
-   const data = await getProjectActivity(
-  id,
-  page,
-  10,
-  date
-);
-
-    setActivities(data.activities || []);
-
-    setActivityPagination(
-      data.pagination || {
-        page,
-        limit: 10,
-        total: 0,
-        totalPages: 0,
-      }
-    );
-
-    setActivityPage(page);
-  } catch (error) {
-    console.error(
-      "Failed to load project activity:",
-      error
-    );
-
-    setActivityError(
-      error.response?.data?.message ||
-        "Unable to load project activity."
-    );
-  } finally {
-    setIsLoadingActivity(false);
-  }
-};
-
-useEffect(() => {
-  if (id) {
-    loadActivity(1);
-  }
-}, [id]);
-
-
-
 const handleOpenMemberSelector = async () => {
   try {
     setIsLoadingUsers(true);
@@ -255,7 +230,19 @@ const handleOpenMemberSelector = async () => {
   }
 };
 
+const handlePostComment = async () => {
+  const comment = commentText.trim();
 
+  if (!comment) {
+    setCommentError("Comment cannot be empty.");
+    return;
+  }
+
+  setCommentError("");
+  setCommentSuccess("");
+
+  // Backend API will be connected here later.
+};
 
 
 const handleSelectMember = (userId) => {
@@ -610,29 +597,68 @@ await loadActivity(1);
       </div>
 
       {/* Technologies */}
-      <div>
-        <label
-          htmlFor="editProjectTechnologies"
-          className="mb-2 block text-sm font-medium text-slate-200"
+      {/* Technologies */}
+<div>
+  <label className="mb-2 block text-sm font-medium text-slate-200">
+    Technologies
+  </label>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      id="editProjectTechnologies"
+      type="text"
+      value={technologyInput}
+      onChange={(event) =>
+        setTechnologyInput(event.target.value)
+      }
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handleAddTechnology();
+        }
+      }}
+      placeholder="Enter a technology..."
+      className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
+    />
+
+    <button
+      type="button"
+      onClick={handleAddTechnology}
+      className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
+    >
+      Add
+    </button>
+  </div>
+
+  {/* Technology tags */}
+  {editTechnologies.length > 0 && (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {editTechnologies.map((technology) => (
+        <div
+          key={technology}
+          className="flex items-center gap-2 rounded-lg border border-indigo-400/20 bg-indigo-400/10 px-3 py-2 text-xs font-medium text-indigo-300"
         >
-          Technologies
-        </label>
+          <span>{technology}</span>
 
-        <input
-          id="editProjectTechnologies"
-          type="text"
-          value={editTechnologies}
-          onChange={(event) =>
-            setEditTechnologies(event.target.value)
-          }
-          placeholder="React, Node.js, MongoDB"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-        />
+          <button
+            type="button"
+            onClick={() =>
+              handleRemoveTechnology(technology)
+            }
+            className="text-indigo-300 transition hover:text-red-300"
+            title={`Remove ${technology}`}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
 
-        <p className="mt-2 text-xs text-slate-500">
-          Separate technologies with commas.
-        </p>
-      </div>
+  <p className="mt-2 text-xs text-slate-500">
+    Enter one technology and click Add. You can also press Enter.
+  </p>
+</div>
 
       {/* Members */}
       <div>
@@ -1067,151 +1093,97 @@ await loadActivity(1);
   </div>
 </section>
 
-{/* Activity Logs */}
+
+{/* Project Comments */}
 <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
       <h2 className="text-lg font-semibold">
-        Activity Logs
+        Project Comments
       </h2>
 
       <p className="mt-1 text-sm text-slate-400">
-        Recent activity and changes made in this project.
+        Share updates, questions, or discussions with your project team.
       </p>
     </div>
-    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
-  <div className="flex-1">
-    <label
-      htmlFor="activityDate"
-      className="text-xs font-medium uppercase tracking-wide text-slate-500"
-    >
-      Filter by date
-    </label>
 
-    <input
-      id="activityDate"
-      type="date"
-      value={activityDate}
-      onChange={(event) => {
-        const value = event.target.value;
-
-        setActivityDate(value);
-        setActivityPage(1);
-
-        loadActivity(1, value);
-      }}
-      className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-    />
-  </div>
-
-  {activityDate && (
     <button
       type="button"
-      onClick={() => {
-        setActivityDate("");
-        setActivityPage(1);
-        loadActivity(1, "");
-      }}
-      className="rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      onClick={() => navigate(`/projects/${id}/comments`)}
+      className="w-fit rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
     >
-      Clear Filter
+      View Comments →
     </button>
-  )}
-</div>
-
-    <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-      {activityPagination.total}{" "}
-      {activityPagination.total === 1
-        ? "activity"
-        : "activities"}
-    </span>
   </div>
 
-  {/* Error */}
-  {activityError && (
-    <div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
-      {activityError}
-    </div>
-  )}
+  {/* Post Comment */}
+  <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+    <label
+      htmlFor="projectComment"
+      className="mb-2 block text-sm font-medium text-slate-200"
+    >
+      Post Comment
+    </label>
 
-  {/* Loading */}
-  {isLoadingActivity ? (
-    <div className="mt-6 space-y-3">
-      {[1, 2, 3].map((item) => (
-        <div
-          key={item}
-          className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/[0.02]"
-        />
-      ))}
-    </div>
-  ) : activities.length > 0 ? (
-    <>
-      {/* Activity list */}
-      <div className="mt-6 space-y-3">
-        {activities.map((activity) => (
-          <ActivityCard
-            key={activity._id}
-            activity={activity}
-          />
-        ))}
+    <textarea
+      id="projectComment"
+      value={commentText}
+      onChange={(event) => {
+        setCommentText(event.target.value);
+        setCommentError("");
+        setCommentSuccess("");
+      }}
+      rows={4}
+      placeholder="Write a comment about this project..."
+      className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:bg-white/[0.07]"
+    />
+
+    {commentError && (
+      <div className="mt-3 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+        {commentError}
       </div>
+    )}
 
-      {/* Pagination */}
-      {activityPagination.totalPages > 1 && (
-        <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-500">
-            Page {activityPagination.page} of{" "}
-            {activityPagination.totalPages}
-          </p>
+    {commentSuccess && (
+      <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300">
+        {commentSuccess}
+      </div>
+    )}
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                loadActivity(activityPage - 1)
-              }
-              disabled={
-                isLoadingActivity ||
-                activityPage <= 1
-              }
-              className="rounded-lg border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← Previous
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                loadActivity(activityPage + 1)
-              }
-              disabled={
-                isLoadingActivity ||
-                activityPage >=
-                  activityPagination.totalPages
-              }
-              className="rounded-lg border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  ) : (
-    <div className="mt-6 rounded-xl border border-dashed border-white/10 px-6 py-8 text-center">
-      <div className="text-2xl">📝</div>
-
-      <p className="mt-3 text-sm font-medium">
-        No activity yet
-      </p>
-
-      <p className="mt-1 text-xs text-slate-500">
-        Project activity will appear here.
-      </p>
+    <div className="mt-4 flex justify-end">
+      <button
+        type="button"
+        onClick={handlePostComment}
+        disabled={isPostingComment}
+        className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isPostingComment ? "Posting..." : "Post Comment"}
+      </button>
     </div>
-  )}
+  </div>
 </section>
 
+<section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 className="text-lg font-semibold">
+        Project Activity
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-400">
+        View the history of changes and activity in this project.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => navigate(`/projects/${id}/activity`)}
+      className="w-fit rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-400"
+    >
+      View Activity / Logs →
+    </button>
+  </div>
+</section>
         {/* Members */}
      {/* Project Members */}
 <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
