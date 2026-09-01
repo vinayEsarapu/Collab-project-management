@@ -87,11 +87,6 @@ const handleRemoveTechnology = (technologyToRemove) => {
     )
   );
 };
-
-
-  
-  
-
 const addMember = (user) => {
   const alreadySelected = selectedMembers.some(
     (member) => member._id === user._id
@@ -136,9 +131,6 @@ const removeMember = (userId) => {
   description: formData.description.trim(),
   status: formData.status,
   technologies,
-  tasks: tasks.map((task) => ({
-    title: task,
-  })),
   members: selectedMembers.map(
     (member) => member._id
   ),

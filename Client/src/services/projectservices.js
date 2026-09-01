@@ -17,6 +17,14 @@ export const getProjectById = async (projectId) => {
 
   return response.data.project;
 };
+export const updateProject = async (projectId, projectData) => {
+  const response = await api.put(
+    `/projects/${projectId}`,
+    projectData
+  );
+
+  return response.data.project;
+};
 
 export const addMember = async (projectId, userId) => {
   const response = await api.post(`/projects/${projectId}/members`, {
@@ -78,7 +86,8 @@ export const searchUsers = async (search = "") => {
 export const getProjectActivity = async (
   projectId,
   page = 1,
-  limit = 10
+  limit = 10,
+  date = ""
 ) => {
   const response = await api.get(
     `/projects/${projectId}/activity`,
@@ -86,12 +95,12 @@ export const getProjectActivity = async (
       params: {
         page,
         limit,
+        ...(date ? { date } : {}),
       },
     }
   );
 
   return response.data;
 };
-
  
 //export default projectService;

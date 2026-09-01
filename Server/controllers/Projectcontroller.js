@@ -2,7 +2,7 @@ const Project = require("../models/Project.js");
 const User = require("../models/user.js");
 const ProjectActivity = require("../models/ProjectActivity.js");
 const mongoose = require("mongoose");
-const ProjectLog = require("../models/ProjectLog");
+//const ProjectLog = require("../models/ProjectLog");
 
 
 
@@ -34,7 +34,7 @@ const addTask = async (req, res) => {
 
     await project.save();
 
-    await ProjectLog.create({
+    await ProjectActivity.create({
       project: project._id,
       user: req.user.userId,
       action: "TASK_ADDED",
@@ -90,7 +90,7 @@ const updateTask = async (req, res) => {
 
     await project.save();
 
-    await ProjectLog.create({
+    await ProjectActivity.create({
       project: project._id,
       user: req.user.userId,
       action: "TASK_UPDATED",
@@ -138,7 +138,7 @@ const deleteTask = async (req, res) => {
 
     await project.save();
 
-    await ProjectLog.create({
+    await ProjectActivity.create({
       project: project._id,
       user: req.user.userId,
       action: "TASK_DELETED",
@@ -307,43 +307,120 @@ const getProjectById = async (req, res) => {
 
 // UPDATE PROJECT
 // UPDATE PROJECT
+// UPDATE PROJECT - OWNER ONLY
 const updateProject = async (req, res) => {
   try {
-    const { title, description, status, technologies } = req.body;
+    const {
+      title,
+      description,
+      status,
+      technologies,
+      members,
+    } = req.body;
 
-    const project = await Project.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        owner: req.user.userId
-      },
-      {
-        title,
-        description,
-        status,
-        technologies
-      },
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    // -----------------------------
+    // Validate project fields
+    // -----------------------------
 
-    if (!project) {
-      return res.status(404).json({
-        message: "Project not found",
+    if (!title || !title.trim()) {
+      return res.status(400).json({
+        message: "Project title is required",
       });
     }
 
-    // Update only project-level information.
-    // Tasks have separate owner-only APIs.
-    project.title = title;
-    project.description = description;
+    if (!description || !description.trim()) {
+      return res.status(400).json({
+        message: "Project description is required",
+      });
+    }
+
+    if (!Array.isArray(members)) {
+      return res.status(400).json({
+        message: "Members must be an array",
+      });
+    }
+
+    // -----------------------------
+    // Find project - OWNER ONLY
+    // -----------------------------
+
+    const project = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user.userId,
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found or you are not the owner",
+      });
+    }
+
+    // -----------------------------
+    // Prepare members
+    // -----------------------------
+
+    const ownerId = req.user.userId.toString();
+
+    const selectedMembers = [
+      ...new Set(
+        members.map((memberId) => memberId.toString())
+      ),
+    ];
+
+    // Owner cannot be added as a member
+    if (selectedMembers.includes(ownerId)) {
+      return res.status(400).json({
+        message: "Project owner cannot be added as a member",
+      });
+    }
+
+    // -----------------------------
+    // Validate members exist
+    // -----------------------------
+
+    if (selectedMembers.length > 0) {
+      const users = await User.find({
+        _id: { $in: selectedMembers },
+      }).select("_id");
+
+      if (users.length !== selectedMembers.length) {
+        return res.status(400).json({
+          message: "One or more selected members do not exist",
+        });
+      }
+    }
+
+    // -----------------------------
+    // Detect member changes
+    // -----------------------------
+
+    const oldMemberIds = project.members.map((member) =>
+      member.toString()
+    );
+
+    const addedMemberIds = selectedMembers.filter(
+      (memberId) => !oldMemberIds.includes(memberId)
+    );
+
+    const removedMemberIds = oldMemberIds.filter(
+      (memberId) => !selectedMembers.includes(memberId)
+    );
+
+    // -----------------------------
+    // Update project
+    // -----------------------------
+
+    project.title = title.trim();
+    project.description = description.trim();
     project.status = status;
-    project.technologies = technologies;
+    project.technologies = technologies || [];
+    project.members = selectedMembers;
 
     await project.save();
 
-    // Project.updatedAt is automatically updated by timestamps.
+    // -----------------------------
+    // Project activity
+    // -----------------------------
 
     await ProjectActivity.create({
       project: project._id,
@@ -352,9 +429,51 @@ const updateProject = async (req, res) => {
       description: `Project "${project.title}" was updated`,
     });
 
+    // -----------------------------
+    // Member activity
+    // -----------------------------
+
+    if (addedMemberIds.length > 0) {
+      const addedUsers = await User.find({
+        _id: { $in: addedMemberIds },
+      }).select("name");
+
+      for (const user of addedUsers) {
+        await ProjectActivity.create({
+          project: project._id,
+          user: req.user.userId,
+          action: "MEMBER_ADDED",
+          description: `${user.name} was added to the project`,
+        });
+      }
+    }
+
+    if (removedMemberIds.length > 0) {
+      const removedUsers = await User.find({
+        _id: { $in: removedMemberIds },
+      }).select("name");
+
+      for (const user of removedUsers) {
+        await ProjectActivity.create({
+          project: project._id,
+          user: req.user.userId,
+          action: "MEMBER_REMOVED",
+          description: `${user.name} was removed from the project`,
+        });
+      }
+    }
+
+    // -----------------------------
+    // Return populated project
+    // -----------------------------
+
+    const updatedProject = await Project.findById(project._id)
+      .populate("owner", "name userCode email")
+      .populate("members", "name userCode email");
+
     res.status(200).json({
       message: "Project updated successfully",
-      project,
+      project: updatedProject,
     });
   } catch (error) {
     console.error("Update project error:", error);
@@ -390,6 +509,9 @@ const getProjectActivity = async (req, res) => {
       50
     );
 
+    const { date } = req.query;
+
+    // Verify project access
     const project = await Project.findOne({
       _id: projectId,
       $or: [
@@ -405,33 +527,71 @@ const getProjectActivity = async (req, res) => {
       });
     }
 
-    const skip = (page - 1) * limit;
+    // Base filter
+    const filter = {
+      project: projectId,
+    };
 
-    const [activities, total] = await Promise.all([
-      ProjectActivity.find({
-        project: projectId,
-      })
-        .populate("user", "name userCode")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
+    // Optional date filter
+    if (date) {
+      const selectedDate = new Date(
+        `${date}T00:00:00.000`
+      );
 
-      ProjectActivity.countDocuments({
-        project: projectId,
-      }),
-    ]);
+      if (Number.isNaN(selectedDate.getTime())) {
+        return res.status(400).json({
+          message: "Invalid date format",
+        });
+      }
+
+      const nextDate = new Date(selectedDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      filter.createdAt = {
+        $gte: selectedDate,
+        $lt: nextDate,
+      };
+    }
+
+    // Count AFTER applying filter
+    const total = await ProjectActivity.countDocuments(
+      filter
+    );
+
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / limit);
+
+    const currentPage =
+      totalPages > 0
+        ? Math.min(page, totalPages)
+        : 1;
+
+    const skip = (currentPage - 1) * limit;
+
+    const activities = await ProjectActivity.find(filter)
+      .populate("user", "name userCode email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.status(200).json({
       activities,
       pagination: {
-        page,
+        page: currentPage,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        hasPreviousPage: currentPage > 1,
       },
     });
   } catch (error) {
-    console.error("Get project activity error:", error);
+    console.error(
+      "Get project activity error:",
+      error
+    );
 
     res.status(500).json({
       message: "Unable to load project activity",
