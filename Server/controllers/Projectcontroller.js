@@ -7,9 +7,32 @@ const mongoose = require("mongoose");
 
 
 // ADD TASK - OWNER ONLY
-const addTask = async (req, res) => {
+const addTask = async (req, res, next) => {
   try {
-    const { title } = req.body;
+    const { id } = req.params;
+
+    const {
+      title,
+      description,
+      status,
+      priority,
+      assignedTo,
+    } = req.body;
+
+    const project = await Project.findById(id);
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    // Only project owner can create tasks
+    if (project.owner.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        message: "Only the project owner can create tasks",
+      });
+    }
 
     if (!title || !title.trim()) {
       return res.status(400).json({
@@ -17,66 +40,76 @@ const addTask = async (req, res) => {
       });
     }
 
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
-
-    if (!project) {
-      return res.status(403).json({
-        message: "You are not authorized to modify tasks.",
+    if (!description || !description.trim()) {
+      return res.status(400).json({
+        message: "Task description is required",
       });
     }
 
-    project.tasks.push({
+    // Validate assignee
+    if (assignedTo) {
+      const isOwner =
+        project.owner.toString() === assignedTo.toString();
+
+      const isMember = project.members.some(
+        (member) => member.toString() === assignedTo.toString()
+      );
+
+      if (!isOwner && !isMember) {
+        return res.status(400).json({
+          message:
+            "Task can only be assigned to the project owner or a project member",
+        });
+      }
+    }
+
+    const task = {
       title: title.trim(),
-    });
+      description: description.trim(),
+      status: status || "Planning",
+      priority: priority || "Medium",
+      assignedTo: assignedTo || null,
+    };
+
+    project.tasks.push(task);
 
     await project.save();
 
-    await ProjectActivity.create({
-      project: project._id,
-      user: req.user.userId,
-      action: "TASK_ADDED",
-      description: `Task "${title.trim()}" was added.`,
-    });
+    const createdTask =
+      project.tasks[project.tasks.length - 1];
 
     res.status(201).json({
-      message: "Task added successfully",
+      message: "Task created successfully",
+      task: createdTask,
       project,
     });
   } catch (error) {
-    console.error("Add task error:", error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
 // UPDATE TASK - OWNER ONLY
-const updateTask = async (req, res) => {
+const updateTask = async (req, res, next) => {
   try {
-    const { title } = req.body;
+    const { id, taskId } = req.params;
 
-    if (!title || !title.trim()) {
-      return res.status(400).json({
-        message: "Task title is required",
-      });
-    }
+    const {
+      title,
+      description,
+      status,
+      priority,
+      assignedTo,
+    } = req.body;
 
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
+    const project = await Project.findById(id);
 
     if (!project) {
-      return res.status(403).json({
-        message: "You are not authorized to modify tasks.",
+      return res.status(404).json({
+        message: "Project not found",
       });
     }
 
-    const task = project.tasks.id(req.params.taskId);
+    const task = project.tasks.id(taskId);
 
     if (!task) {
       return res.status(404).json({
@@ -84,80 +117,223 @@ const updateTask = async (req, res) => {
       });
     }
 
-    const oldTitle = task.title;
+    const userId = req.user.userId.toString();
 
-    task.title = title.trim();
+    const isOwner =
+      project.owner.toString() === userId;
+
+    const isAssignedMember =
+      task.assignedTo &&
+      task.assignedTo.toString() === userId;
+
+    // Only owner or assigned member can edit
+    if (!isOwner && !isAssignedMember) {
+      return res.status(403).json({
+        message:
+          "Only the project owner or assigned member can edit this task",
+      });
+    }
+
+    // Assignment can ONLY be changed by owner
+    if (
+      assignedTo !== undefined &&
+      !isOwner
+    ) {
+      return res.status(403).json({
+        message: "Only the project owner can change task assignment",
+      });
+    }
+
+    // Validate new assignee
+    if (assignedTo) {
+      const assigneeIsOwner =
+        project.owner.toString() === assignedTo.toString();
+
+      const assigneeIsMember =
+        project.members.some(
+          (member) =>
+            member.toString() === assignedTo.toString()
+        );
+
+      if (!assigneeIsOwner && !assigneeIsMember) {
+        return res.status(400).json({
+          message:
+            "Task can only be assigned to the project owner or a project member",
+        });
+      }
+    }
+
+    if (title !== undefined) {
+      if (!title.trim()) {
+        return res.status(400).json({
+          message: "Task title cannot be empty",
+        });
+      }
+
+      task.title = title.trim();
+    }
+
+    if (description !== undefined) {
+      if (!description.trim()) {
+        return res.status(400).json({
+          message: "Task description cannot be empty",
+        });
+      }
+
+      task.description = description.trim();
+    }
+
+    if (status !== undefined) {
+      task.status = status;
+    }
+
+    if (priority !== undefined) {
+      task.priority = priority;
+    }
+
+    if (assignedTo !== undefined) {
+      task.assignedTo = assignedTo || null;
+    }
 
     await project.save();
 
-    await ProjectActivity.create({
-      project: project._id,
-      user: req.user.userId,
-      action: "TASK_UPDATED",
-      description: `Task "${oldTitle}" was changed to "${title.trim()}".`,
-    });
-
     res.status(200).json({
       message: "Task updated successfully",
+      task,
       project,
     });
   } catch (error) {
-    console.error("Update task error:", error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    next(error);
   }
 };
-
 // DELETE TASK - OWNER ONLY
-const deleteTask = async (req, res) => {
+const deleteTask = async (req, res, next) => {
   try {
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
+    const { id, taskId } = req.params;
+
+    const project = await Project.findById(id);
 
     if (!project) {
-      return res.status(403).json({
-        message: "You are not authorized to modify tasks.",
+      return res.status(404).json({
+        message: "Project not found",
       });
     }
 
-    const task = project.tasks.id(req.params.taskId);
+    // Only owner can delete
+    if (
+      project.owner.toString() !==
+      req.user.userId.toString()
+    ) {
+      return res.status(403).json({
+        message: "Only the project owner can delete tasks",
+      });
+    }
+
+    const task = project.tasks.id(taskId);
 
     if (!task) {
       return res.status(404).json({
         message: "Task not found",
       });
     }
-
-    const deletedTitle = task.title;
 
     task.deleteOne();
 
     await project.save();
-
-    await ProjectActivity.create({
-      project: project._id,
-      user: req.user.userId,
-      action: "TASK_DELETED",
-      description: `Task "${deletedTitle}" was deleted.`,
-    });
 
     res.status(200).json({
       message: "Task deleted successfully",
       project,
     });
   } catch (error) {
-    console.error("Delete task error:", error);
-
-    res.status(500).json({
-      message: "Server error",
-    });
+    next(error);
   }
 };
 
+const getProjectTasks = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const project = await Project.findById(id)
+      .populate("owner", "name email")
+      .populate("members", "name email")
+      .populate("tasks.assignedTo", "name email");
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const userId = req.user.userId.toString();
+
+    const isOwner =
+      project.owner._id.toString() === userId;
+
+    const isMember = project.members.some(
+      (member) => member._id.toString() === userId
+    );
+
+    if (!isOwner && !isMember) {
+      return res.status(403).json({
+        message: "You do not have access to this project",
+      });
+    }
+
+    res.status(200).json({
+      projectId: project._id,
+      tasks: project.tasks,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTaskById = async (req, res, next) => {
+  try {
+    const { id, taskId } = req.params;
+
+    const project = await Project.findById(id)
+      .populate("owner", "name email")
+      .populate("members", "name email")
+      .populate("tasks.assignedTo", "name email");
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    const userId = req.user.userId.toString();
+
+    const isOwner =
+      project.owner._id.toString() === userId;
+
+    const isMember = project.members.some(
+      (member) => member._id.toString() === userId
+    );
+
+    if (!isOwner && !isMember) {
+      return res.status(403).json({
+        message: "You do not have access to this project",
+      });
+    }
+
+    const task = project.tasks.id(taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    res.status(200).json({
+      task,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 // CREATE PROJECT
 // CREATE PROJECT
 const createProject = async (req, res) => {
@@ -826,12 +1002,16 @@ module.exports = {
   getProjectById,
   updateProject,
   deleteProject,
+
   addMember,
   removeMember,
   getUsersForMemberSelection,
-  searchUsers,
+
   addTask,
   updateTask,
   deleteTask,
+  getProjectTasks,
+  getTaskById,
+
   getProjectActivity,
 };

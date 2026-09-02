@@ -2,11 +2,17 @@ import { Link } from "react-router-dom";
 function IssueCard({ issue ,  projectId}) {
 
   
-  return (
-    <Link
-  to={`/projects/${projectId}/issues/${issue._id}`}
-  className="block">
+ return (
+  <Link
+    to={
+      taskId
+        ? `/projects/${projectId}/tasks/${taskId}/issues/${issue._id}`
+        : `/projects/${projectId}/issues/${issue._id}`
+    }
+    className="block"
+  >
 
+    
     <div className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.05]">
       
       {/* Header */}

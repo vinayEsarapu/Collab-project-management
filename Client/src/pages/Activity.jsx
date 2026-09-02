@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getIssueActivities } from "../services/activityService";
 
 function Activity() {
-  const { id: projectId, issueId } = useParams();
+  const { id: projectId,  taskId, issueId } = useParams();
 
   const [activities, setActivities] = useState([]);
   const [issue, setIssue] = useState(null);
@@ -23,17 +23,25 @@ function Activity() {
     hasPreviousPage: false,
   });
 
+  
   const fetchActivities = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await getIssueActivities(
-        issueId,
-        page,
-        10,
-        selectedDate
-      );
+     const data = taskId
+  ? await getTaskActivities(
+      taskId,
+      page,
+      10,
+      selectedDate
+    )
+  : await getIssueActivities(
+      issueId,
+      page,
+      10,
+      selectedDate
+    );
 
       setActivities(data.activities || []);
       setPagination(
@@ -112,35 +120,52 @@ function Activity() {
           details.from || "Unknown"
         } to ${details.to || "Unknown"}`;
 
+         case "COMMENT_ADDED":
+      return "added a comment";
+
+    case "COMMENT_UPDATED":
+      return "updated a comment";
+
+    case "COMMENT_DELETED":
+      return "deleted a comment";
+
       default:
         return "updated this issue";
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    return (
+  <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl">
 
-        <Link
-          to={`/projects/${projectId}/issues/${issueId}`}
-          className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
-        >
-          ← Back to Issue
-        </Link>
+      <Link
+        to={
+          taskId
+            ? `/projects/${projectId}/tasks/${taskId}`
+            : `/projects/${projectId}/issues/${issueId}`
+        }
+        className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+      >
+        ← Back
+      </Link>
 
-        <div className="mt-6">
-          <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
-            Issue Activity
-          </p>
+      <div className="mt-6">
+        <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
+          {taskId ? "Task Activity" : "Issue Activity"}
+        </p>
 
-          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">
-            Activity / Audit Log
-          </h1>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">
+          {taskId
+            ? "Task Activity / Audit Log"
+            : "Activity / Audit Log"}
+        </h1>
 
-          <p className="mt-2 text-sm text-slate-400">
-            Track important changes made to this issue.
-          </p>
-        </div>
+        <p className="mt-2 text-sm text-slate-400">
+          {taskId
+            ? "Track important changes made to this task and its issues."
+            : "Track important changes made to this issue."}
+        </p>
+      </div>
 
         {/* Date filter */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">

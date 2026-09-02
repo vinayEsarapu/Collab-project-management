@@ -3,11 +3,44 @@ const Project = require("../models/Project");
 const { createActivity } = require("../services/activityService");
 
 // Create an issue
+// Create an issue
 const createIssue = async (req, res) => {
   try {
-    const { title, description, status, priority, labels, project, assignedTo } =
-      req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      labels,
+      project,
+      task,
+      assignedTo,
+    } = req.body;
 
+    // Validate project first
+    const projectDoc = await Project.findById(project);
+
+    if (!projectDoc) {
+      return res.status(404).json({
+        message: "Project not found",
+      });
+    }
+
+    // If this is a task-level issue, verify that
+    // the task actually belongs to this project.
+    let taskData = null;
+
+    if (task) {
+      taskData = projectDoc.tasks.id(task);
+
+      if (!taskData) {
+        return res.status(404).json({
+          message: "Task not found in this project",
+        });
+      }
+    }
+
+    // Create issue only AFTER project/task validation
     const issue = await Issue.create({
       title,
       description,
@@ -15,29 +48,32 @@ const createIssue = async (req, res) => {
       priority,
       labels,
       project,
+      task: task || null,
       createdBy: req.user.userId,
       assignedTo: assignedTo || null,
     });
+
     await createActivity({
-    issue: issue._id,
-    project: issue.project,
-    user: req.user.userId,
-    action: "ISSUE_CREATED",
-});
-   if (assignedTo) {
-  await createActivity({
-    issue: issue._id,
-    project: issue.project,
-    user: req.user.userId,
-    action: "ISSUE_ASSIGNED",
-    details: {
-      assignedTo: assignedTo.toString(),
-    },
-  });
-}
+      issue: issue._id,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_CREATED",
+    });
+
+    if (assignedTo) {
+      await createActivity({
+        issue: issue._id,
+        project: issue.project,
+        user: req.user.userId,
+        action: "ISSUE_ASSIGNED",
+        details: {
+          assignedTo: assignedTo.toString(),
+        },
+      });
+    }
 
     const populatedIssue = await Issue.findById(issue._id)
-      .populate("project", "name description")
+      .populate("project", "name title description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email");
 
@@ -54,6 +90,65 @@ const createIssue = async (req, res) => {
 };
 
 
+const getIssuesByTask = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+
+    const project = await Project.findOne({
+      "tasks._id": taskId,
+    })
+      .populate("owner", "name email")
+      .populate("members", "name email");
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    const userId = req.user._id.toString();
+
+    const isOwner =
+      project.owner._id.toString() === userId;
+
+    const isMember = project.members.some(
+      (member) => member._id.toString() === userId
+    );
+
+    if (!isOwner && !isMember) {
+      return res.status(403).json({
+        message: "You do not have access to this task",
+      });
+    }
+
+    const task = project.tasks.id(taskId);
+
+    if (!task) {
+      return res.status(404).json({
+        message: "Task not found",
+      });
+    }
+
+    const issues = await Issue.find({
+      project: project._id,
+      task: taskId,
+    })
+      .populate("createdBy", "name email")
+      .populate("assignedTo", "name email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      projectId: project._id,
+      taskId: task._id,
+      task,
+      issues,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+   
 // Get all issues
 const getIssues = async (req, res) => {
   try {
@@ -319,12 +414,16 @@ const deleteIssue = async (req, res) => {
 };
 
 // Get issues by project
+// Get project-level issues only
 const getIssuesByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
 
-    const issues = await Issue.find({ project: projectId })
-      .populate("project", "name description")
+    const issues = await Issue.find({
+      project: projectId,
+      task: null,
+    })
+      .populate("project", "name title description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
       .sort({ createdAt: -1 });
@@ -348,4 +447,5 @@ module.exports = {
   getIssuesByProject,
   updateIssue,
   deleteIssue,
+  getIssuesByTask,
 };

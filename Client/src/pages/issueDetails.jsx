@@ -6,12 +6,13 @@ import IssueForm from "../components/issues/issueform";
 import {
   updateIssue,
   deleteIssue,
+   getTaskIssueById,
 } from "../services/issueservices";
 import {getProjectById} from "../services/projectservices";
 
 
 function IssueDetails() {
-  const { id: projectId, issueId } = useParams();
+  const { id: projectId, taskId, issueId } = useParams();
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -22,6 +23,14 @@ function IssueDetails() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [project, setProject] = useState(null);
+
+  const issueCommentsPath = taskId
+  ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/comments`
+  : `/projects/${projectId}/issues/${issueId}/comments`;
+
+const issueActivityPath = taskId
+  ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/activity`
+  : `/projects/${projectId}/issues/${issueId}/activity`;
   
 
 
@@ -53,12 +62,23 @@ const canEdit =
   }
 };
 
-  const handleUpdateIssue = async (issueData) => {
+const handleUpdateIssue = async (issueData) => {
   try {
-    const data = await updateIssue(
-      issueId,
-      issueData
-    );
+    let data;
+
+    if (taskId) {
+      const response = await api.put(
+        `/issues/task/${taskId}/${issueId}`,
+        issueData
+      );
+
+      data = response.data;
+    } else {
+      data = await updateIssue(
+        issueId,
+        issueData
+      );
+    }
 
     setIssue(data.issue || data);
 
@@ -84,9 +104,21 @@ const handleDeleteIssue = async () => {
     setDeleting(true);
     setError("");
 
-    await deleteIssue(issueId);
+    if (taskId) {
+  await api.delete(
+    `/issues/task/${taskId}/${issueId}`
+  );
 
-    navigate(`/projects/${projectId}/issues`);
+  navigate(
+    `/projects/${projectId}/tasks/${taskId}/issues`
+  );
+} else {
+  await deleteIssue(issueId);
+
+  navigate(
+    `/projects/${projectId}/issues`
+  );
+}
   } catch (error) {
     setError(
       error.response?.data?.message ||
@@ -98,22 +130,33 @@ const handleDeleteIssue = async () => {
 };
 
   const fetchIssue = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  try {
+    setLoading(true);
+    setError("");
 
-      const response = await api.get(`/issues/${issueId}`);
+    let response;
 
-      setIssue(response.data.issue || response.data);
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Failed to load issue."
+    if (taskId) {
+      response = await getTaskIssueById(
+        taskId,
+        issueId
       );
-    } finally {
-      setLoading(false);
+    } else {
+      response = await api.get(
+        `/issues/${issueId}`
+      );
     }
-  };
+
+    setIssue(response.issue || response);
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Failed to load issue."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
   if (issueId) {
     fetchIssue();
@@ -234,7 +277,11 @@ const handleDeleteIssue = async () => {
 
         {/* Back */}
         <Link
-          to={`/projects/${projectId}`}
+          to={
+  taskId
+    ? `/projects/${projectId}/tasks/${taskId}`
+    : `/projects/${projectId}`
+}v
           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
          >
            ← Back to Project
@@ -424,8 +471,10 @@ const handleDeleteIssue = async () => {
           {/* View Activity */}
         {/* View Comments */}
 
+      
+
 <Link
-  to={`/projects/${projectId}/issues/${issueId}/comments`}
+  to={issueCommentsPath}
   className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-5 py-3 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
 >
   View Comments
@@ -435,19 +484,23 @@ const handleDeleteIssue = async () => {
 {/* View Activity */}
 
 <Link
-  to={`/projects/${projectId}/issues/${issueId}/activity`}
+  to={issueActivityPath}
   className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
 >
   View Activity
 </Link>
           <button
-            onClick={() =>
-              navigate(`/projects/${projectId}/issues`)
-            }
-            className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-          >
-            Back to Issues
-          </button>
+  onClick={() =>
+    navigate(
+      taskId
+        ? `/projects/${projectId}/tasks/${taskId}/issues`
+        : `/projects/${projectId}/issues`
+    )
+  }
+  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+>
+  Back to Issues
+</button>
           {isOwner && (
           <button
             onClick={handleDeleteIssue}

@@ -14,6 +14,7 @@ const {
   getIssuesByProject,
   updateIssue,
   deleteIssue,
+  getIssuesByTask,
 } = require("../controllers/issueController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -25,7 +26,7 @@ const {
 
 const validate = require("../middleware/validationMiddleware");
 
-const {checkIssueAccess} = require("../middleware/issueauthorization");
+const {checkIssueAccess,   checkTaskIssueAccess,} = require("../middleware/issueauthorization");
 
 const router = express.Router();
 
@@ -39,8 +40,39 @@ router.post(
 // Get all issues
 router.get("/", authMiddleware, getIssues);
 
+router.get(
+  "/task/:taskId/:id",
+  authMiddleware,
+  checkTaskIssueAccess,
+  getIssueById
+);
+
+router.put(
+  "/task/:taskId/:id",
+  authMiddleware,
+  checkTaskIssueAccess,
+  authorizeIssueEdit,
+  authorizeIssueAssignment,
+  updateIssueValidator,
+  validate,
+  updateIssue
+);
+
+router.delete(
+  "/task/:taskId/:id",
+  authMiddleware,
+  checkTaskIssueAccess,
+  deleteIssue
+);
+
 //Get issues by project 
 router.get("/project/:projectId", authMiddleware, checkProjectAccess, getIssuesByProject);
+
+router.get(
+  "/task/:taskId",
+  authMiddleware,
+  getIssuesByTask
+);
 
 
 // Get single issue

@@ -4,7 +4,7 @@ const Project = require("../models/Project");
 
 const authorizeCommentMember = async (req, res, next) => {
   try {
-    const issueId = req.params.issueId;
+    const { issueId, taskId } = req.params;
 
     const issue = await Issue.findById(issueId);
 
@@ -21,6 +21,38 @@ const authorizeCommentMember = async (req, res, next) => {
         message: "Associated project not found",
       });
     }
+
+    // -----------------------------------------
+    // Task-level issue validation
+    // -----------------------------------------
+
+    if (taskId) {
+      const task = project.tasks.id(taskId);
+
+      if (!task) {
+        return res.status(404).json({
+          message: "Task not found in this project",
+        });
+      }
+
+      // Make sure this issue actually belongs
+      // to the requested task.
+      if (
+        !issue.task ||
+        issue.task.toString() !== taskId.toString()
+      ) {
+        return res.status(403).json({
+          message:
+            "This issue does not belong to the requested task",
+        });
+      }
+
+      req.task = task;
+    }
+
+    // -----------------------------------------
+    // Existing project authorization
+    // -----------------------------------------
 
     const userId = req.user.userId.toString();
 

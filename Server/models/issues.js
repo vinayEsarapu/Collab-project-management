@@ -39,6 +39,14 @@ const issueSchema = new mongoose.Schema(
       required: true,
     },
 
+
+// null = project-level issue
+// ObjectId = task-level issue
+    task: {
+  type: mongoose.Schema.Types.ObjectId,
+  default: null,
+},
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

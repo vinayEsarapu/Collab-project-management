@@ -3,9 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getProjectById,
   updateProject,
-  addTask,
-  updateTask,
-  deleteTask,
   getUsersForMemberSelection,
   addMember,
   removeMember,
@@ -21,14 +18,6 @@ function ProjectDetails() {
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [taskTitle, setTaskTitle] = useState("");
-const [editingTaskId, setEditingTaskId] = useState(null);
-const [editingTaskTitle, setEditingTaskTitle] = useState("");
-const [taskError, setTaskError] = useState("");
-const [taskSuccess, setTaskSuccess] = useState("");
-const [isAddingTask, setIsAddingTask] = useState(false);
-const [updatingTaskId, setUpdatingTaskId] = useState(null);
-const [deletingTaskId, setDeletingTaskId] = useState(null);
 const [availableUsers, setAvailableUsers] = useState([]);
 const [showMemberSelector, setShowMemberSelector] = useState(false);
 const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -281,123 +270,9 @@ const handleSelectMember = (userId) => {
   });
 };
 
-const handleAddTask = async () => {
-  const title = taskTitle.trim();
 
-  if (!title) {
-    setTaskError("Task title is required.");
-    return;
-  }
 
-  setTaskError("");
-  setTaskSuccess("");
 
-  try {
-    setIsAddingTask(true);
-    await addTask(id, title);
-const refreshedProject = await getProjectById(id);
-
-setProject(refreshedProject);
-
-await loadActivity(1);
-setTaskTitle("");
-    setTaskSuccess("Task added successfully.");
-  } catch (error) {
-    console.error("Failed to add task:", error);
-
-    setTaskError(
-      error.response?.data?.message ||
-        "Unable to add task."
-    );
-  } finally {
-    setIsAddingTask(false);
-  }
-};
-
-const handleStartEditTask = (task) => {
-  setEditingTaskId(task._id);
-  setEditingTaskTitle(task.title);
-  setTaskError("");
-  setTaskSuccess("");
-};
-
-const handleCancelEditTask = () => {
-  setEditingTaskId(null);
-  setEditingTaskTitle("");
-};
-
-const handleUpdateTask = async (taskId) => {
-  const title = editingTaskTitle.trim();
-
-  if (!title) {
-    setTaskError("Task title is required.");
-    return;
-  }
-
-  setTaskError("");
-  setTaskSuccess("");
-
-  try {
-    setUpdatingTaskId(taskId);
-
-    await updateTask(
-      id,
-      taskId,
-      title
-    );
-
-   const refreshedProject = await getProjectById(id);
-
-setProject(refreshedProject);
-
-setEditingTaskId(null);
-setEditingTaskTitle("");
-
-await loadActivity(activityPage);
-    setEditingTaskId(null);
-    setEditingTaskTitle("");
-    setTaskSuccess("Task updated successfully.");
-  } catch (error) {
-    console.error("Failed to update task:", error);
-
-    setTaskError(
-      error.response?.data?.message ||
-        "Unable to update task."
-    );
-  } finally {
-    setUpdatingTaskId(null);
-  }
-};
-
-const handleDeleteTask = async (taskId) => {
-  setTaskError("");
-  setTaskSuccess("");
-
-  try {
-    setDeletingTaskId(taskId);
-
-   await deleteTask(
-  id,
-  taskId
-);
-
-const refreshedProject = await getProjectById(id);
-
-setProject(refreshedProject);
-await loadActivity(activityPage);
-await loadActivity(1);
-    setTaskSuccess("Task deleted successfully.");
-  } catch (error) {
-    console.error("Failed to delete task:", error);
-
-    setTaskError(
-      error.response?.data?.message ||
-        "Unable to delete task."
-    );
-  } finally {
-    setDeletingTaskId(null);
-  }
-};
 
   if (isLoading) {
     return (
@@ -948,6 +823,7 @@ await loadActivity(1);
         </div>
 
         {/* Tasks */}
+{/* Project Tasks */}
 <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
@@ -956,165 +832,28 @@ await loadActivity(1);
       </h2>
 
       <p className="mt-1 text-sm text-slate-400">
-        Tasks related to this project.
+        View and manage the tasks associated with this project.
       </p>
     </div>
 
-    <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-      {project.tasks?.length || 0} task
-      {project.tasks?.length === 1 ? "" : "s"}
-    </span>
-  </div>
+    <div className="flex items-center gap-3">
+      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
+        {project.tasks?.length || 0} task
+        {project.tasks?.length === 1 ? "" : "s"}
+      </span>
 
-  {/* Owner controls */}
-  {isOwner && (
-    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <label
-        htmlFor="taskTitle"
-        className="mb-2 block text-sm font-medium text-slate-200"
+      <button
+        type="button"
+        onClick={() =>
+          navigate(`/projects/${id}/tasks`)
+        }
+        className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
       >
-        Add Task
-      </label>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          id="taskTitle"
-          type="text"
-          value={taskTitle}
-          onChange={(event) => {
-            setTaskTitle(event.target.value);
-            setTaskError("");
-          }}
-          placeholder="Enter task title..."
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50 focus:bg-white/[0.07]"
-        />
-
-        <button
-          type="button"
-          onClick={handleAddTask}
-          disabled={isAddingTask}
-          className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isAddingTask ? "Adding..." : "Add Task"}
-        </button>
-      </div>
+        View Tasks →
+      </button>
     </div>
-  )}
-
-  {/* Messages */}
-  {taskError && (
-    <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
-      {taskError}
-    </div>
-  )}
-
-  {taskSuccess && (
-    <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300">
-      {taskSuccess}
-    </div>
-  )}
-
-  {/* Tasks list */}
-  <div className="mt-6">
-    {project.tasks?.length > 0 ? (
-      <div className="space-y-3">
-        {project.tasks.map((task, index) => (
-          <div
-            key={task._id}
-            className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
-          >
-            {editingTaskId === task._id ? (
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="text"
-                  value={editingTaskTitle}
-                  onChange={(event) =>
-                    setEditingTaskTitle(event.target.value)
-                  }
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400/50"
-                />
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleUpdateTask(task._id)
-                    }
-                    disabled={updatingTaskId === task._id}
-                    className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium hover:bg-indigo-400 disabled:opacity-50"
-                  >
-                   {updatingTaskId === task._id ? "Saving..." : "Save"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCancelEditTask}
-                    className="rounded-lg border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-xs font-semibold text-indigo-300">
-                  {index + 1}
-                </div>
-
-                <p className="min-w-0 flex-1 text-sm text-slate-200">
-                  {task.title}
-                </p>
-
-                {/* Owner controls */}
-                {isOwner && (
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleStartEditTask(task)
-                      }
-                      className="rounded-lg px-3 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-400/10"
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleDeleteTask(task._id)
-                      }
-                      disabled={deletingTaskId === task._id}
-                      className="rounded-lg px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
-                    >
-                      {deletingTaskId === task._id
-                        ? "Deleting..."
-                        : "Delete"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    ) : (
-      <div className="rounded-xl border border-dashed border-white/10 px-6 py-8 text-center">
-        <div className="text-2xl">✓</div>
-
-        <p className="mt-3 text-sm font-medium">
-          No tasks yet
-        </p>
-
-        <p className="mt-1 text-xs text-slate-500">
-          {isOwner
-            ? "Add a task to start organizing this project."
-            : "The project owner has not added any tasks yet."}
-        </p>
-      </div>
-    )}
   </div>
 </section>
-
 
 {/* Project Comments */}
 <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">

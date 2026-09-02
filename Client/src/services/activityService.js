@@ -24,3 +24,28 @@ export const getIssueActivities = async (
 
   return response.data;
 };
+
+export const getTaskActivities = async (
+  taskId,
+  page = 1,
+  limit = 10,
+  date = ""
+) => {
+  const params = {
+    page,
+    limit,
+  };
+
+  if (date) {
+    params.date = date;
+  }
+
+  const response = await api.get(
+    `/activities/task/${taskId}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};

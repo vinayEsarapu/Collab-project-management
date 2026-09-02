@@ -9,7 +9,7 @@ import {
 } from "../services/commentService";
 
 function Comments() {
-  const { id: projectId, issueId } = useParams();
+  const { id: projectId,   taskId,issueId } = useParams();
   const { user } = useAuth();
 
   const [comments, setComments] = useState([]);
@@ -117,7 +117,8 @@ function Comments() {
         issueId,
         page,
         10,
-        name
+        name,
+         taskId
       );
 
       setComments(data.comments || []);
@@ -190,7 +191,8 @@ function Comments() {
 
       await createComment(
         issueId,
-        commentText
+        commentText,
+          taskId
       );
 
       setCommentText("");
@@ -309,15 +311,19 @@ function Comments() {
 
         {/* Back */}
         <Link
-          to={`/projects/${projectId}/issues/${issueId}`}
-          className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
-        >
-          ← Back to Issue
-        </Link>
-
+  to={
+    taskId
+      ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`
+      : `/projects/${projectId}/issues/${issueId}`
+  }
+  className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+>
+  ← Back to Issue
+</Link>
         {/* Header */}
         <div className="mt-6">
           <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
+             {taskId ? "Task Issue Comments" : "Issue Comments"}
             Issue Comments
           </p>
 

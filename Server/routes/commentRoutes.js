@@ -16,6 +16,22 @@ const {
 
 const router = express.Router();
 
+// Get comments for a task-level issue
+router.get(
+  "/task/:taskId/issue/:issueId",
+  authMiddleware,
+  authorizeCommentMember,
+  getComments
+);
+
+// Add comment to a task-level issue
+router.post(
+  "/task/:taskId/issue/:issueId",
+  authMiddleware,
+  authorizeCommentMember,
+  createComment
+);
+
 // Get comments for an issue
 router.get(
   "/issue/:issueId",

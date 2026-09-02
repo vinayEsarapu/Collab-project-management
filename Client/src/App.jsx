@@ -14,6 +14,9 @@ import Activity from "./pages/Activity";
 import Comments from "./pages/Comments";
 import ProjectActivity from "./pages/ProjectActivity";
 import ProjectComments from "./pages/ProjectComments";
+import Tasks from "./pages/Tasks";
+import TaskDetails from "./pages/TaskDetails";
+import TaskIssues from "./Pages/TaskIssues";
 
 function ProtectedLayout() {
   return (
@@ -60,9 +63,29 @@ function App() {
           />
 
           <Route
-  path="/projects/:id/activity"
-  element={<ProjectActivity />}
-/>
+            path="/projects/:id/tasks"
+            element={<Tasks />}
+          />
+
+      <Route
+        path="/projects/:id/tasks/:taskId"
+        element={<TaskDetails />}
+      />
+
+       <Route
+          path="/projects/:id/tasks/:taskId/issues"
+         element={<TaskIssues />}
+       />
+
+         <Route
+           path="/projects/:id/tasks/:taskId/issues/:issueId"
+           element={<IssueDetails />}
+         />
+
+          <Route
+            path="/projects/:id/activity"
+            element={<ProjectActivity />}
+          />
 
            <Route
             path="/projects/:id/issues"
@@ -70,9 +93,9 @@ function App() {
           />
 
          <Route
-  path="/projects/:id/comments"
-  element={<ProjectComments />}
-/>
+          path="/projects/:id/comments"
+          element={<ProjectComments />}
+        />
 
           <Route
            path="/projects/:id/issues/:issueId"
@@ -84,6 +107,11 @@ function App() {
           />
           <Route
             path="/projects/:id/issues/:issueId/comments"
+            element={<Comments />}
+          />
+
+          <Route
+            path="/projects/:id/tasks/:taskId/issues/:issueId/comments"
             element={<Comments />}
           />
 

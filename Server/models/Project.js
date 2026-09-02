@@ -9,6 +9,31 @@ const taskSchema = new mongoose.Schema(
       minlength: 1,
       maxlength: 200,
     },
+
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 2000,
+    },
+
+    status: {
+      type: String,
+      enum: ["Planning", "In Progress", "Completed"],
+      default: "Planning",
+    },
+
+    priority: {
+      type: String,
+      enum: ["Low", "Medium", "High", "Critical"],
+      default: "Medium",
+    },
+
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -40,21 +65,8 @@ const projectSchema = new mongoose.Schema(
       default: [],
     },
 
-    // Project tasks
-    // Only the project owner can add/edit/delete these.
-    tasks: [
-  {
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      default: () => new mongoose.Types.ObjectId(),
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-  },
-],
+    // Tasks remain embedded inside the Project document.
+    tasks: [taskSchema],
 
     owner: {
       type: mongoose.Schema.Types.ObjectId,
@@ -69,6 +81,7 @@ const projectSchema = new mongoose.Schema(
       },
     ],
   },
+
   {
     timestamps: true,
   }

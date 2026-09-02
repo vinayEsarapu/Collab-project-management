@@ -13,6 +13,8 @@ const {
   updateTask,
   deleteTask,
   getProjectActivity,
+  getProjectTasks,
+getTaskById,
 } = require("../controllers/Projectcontroller");
 
 const {
@@ -48,6 +50,11 @@ router.get("/", getProjects);
 router.get("/:id/activity", getProjectActivity);
 
 // TASKS - OWNER ONLY
+// Get all tasks for a project
+router.get("/:id/tasks", getProjectTasks);
+
+// Get one task
+router.get("/:id/tasks/:taskId", getTaskById);
 router.post("/:id/tasks", addTask);
 
 router.put("/:id/tasks/:taskId", updateTask);

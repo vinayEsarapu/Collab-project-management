@@ -5,7 +5,8 @@ export const getComments = async (
   issueId,
   page = 1,
   limit = 10,
-  name = ""
+  name = "",
+  taskId = null
 ) => {
   const params = new URLSearchParams();
 
@@ -16,8 +17,12 @@ export const getComments = async (
     params.append("name", name.trim());
   }
 
+  const endpoint = taskId
+    ? `/comments/task/${taskId}/issue/${issueId}`
+    : `/comments/issue/${issueId}`;
+
   const response = await api.get(
-    `/comments/issue/${issueId}?${params.toString()}`
+    `${endpoint}?${params.toString()}`
   );
 
   return response.data;
@@ -27,10 +32,15 @@ export const getComments = async (
 // Create a comment
 export const createComment = async (
   issueId,
-  content
+  content,
+  taskId = null
 ) => {
+  const endpoint = taskId
+    ? `/comments/task/${taskId}/issue/${issueId}`
+    : `/comments/issue/${issueId}`;
+
   const response = await api.post(
-    `/comments/issue/${issueId}`,
+    endpoint,
     {
       content,
     }

@@ -43,25 +43,55 @@ export const removeMember = async (projectId, userId) => {
 };
 
 // ADD TASK
-export const addTask = async (projectId, title) => {
+// TASKS
+
+// Get all tasks for a project
+export const getProjectTasks = async (projectId) => {
+  const response = await api.get(
+    `/projects/${projectId}/tasks`
+  );
+
+  return response.data.tasks || [];
+};
+
+// Get one task
+export const getTaskById = async (projectId, taskId) => {
+  const response = await api.get(
+    `/projects/${projectId}/tasks/${taskId}`
+  );
+
+  return response.data.task;
+};
+
+// Create task
+export const addTask = async (projectId, taskData) => {
   const response = await api.post(
     `/projects/${projectId}/tasks`,
-    { title }
+    taskData
   );
 
-  return response.data.project;
+  return response.data.task;
 };
 
-export const updateTask = async (projectId, taskId, title) => {
+// Update task
+export const updateTask = async (
+  projectId,
+  taskId,
+  taskData
+) => {
   const response = await api.put(
     `/projects/${projectId}/tasks/${taskId}`,
-    { title }
+    taskData
   );
 
-  return response.data.project;
+  return response.data.task;
 };
 
-export const deleteTask = async (projectId, taskId) => {
+// Delete task
+export const deleteTask = async (
+  projectId,
+  taskId
+) => {
   const response = await api.delete(
     `/projects/${projectId}/tasks/${taskId}`
   );

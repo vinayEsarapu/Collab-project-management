@@ -116,6 +116,16 @@ const authorizeIssueCreation = async (req, res, next) => {
       (member) => member.toString() === userId
     );
 
+    if (req.body.task) {
+  const task = req.project.tasks.id(req.body.task);
+
+  if (!task) {
+    return res.status(400).json({
+      message: "Task does not belong to this project",
+    });
+  }
+}
+
     if (!isOwner && !isMember) {
       return res.status(403).json({
         message:
