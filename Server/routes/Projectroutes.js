@@ -15,6 +15,18 @@ const {
   getProjectActivity,
 } = require("../controllers/Projectcontroller");
 
+const {
+  getProjectComments,
+  createProjectComment,
+  updateProjectComment,
+  deleteProjectComment,
+} = require("../controllers/projectCommentController");
+
+const {
+  authorizeProjectCommentMember,
+  authorizeProjectCommentAuthor,
+} = require("../middleware/projectCommentAuthorization");
+
 const authMiddleware = require("../middleware/authMiddleware");
 const validateProject = require("../validators/projectValidator");
 
@@ -41,6 +53,38 @@ router.post("/:id/tasks", addTask);
 router.put("/:id/tasks/:taskId", updateTask);
 
 router.delete("/:id/tasks/:taskId", deleteTask);
+
+// -----------------------------------------
+// PROJECT COMMENTS
+// -----------------------------------------
+
+// GET PROJECT COMMENTS
+router.get(
+  "/:id/comments",
+  authorizeProjectCommentMember,
+  getProjectComments
+);
+
+// ADD PROJECT COMMENT
+router.post(
+  "/:id/comments",
+  authorizeProjectCommentMember,
+  createProjectComment
+);
+
+// UPDATE OWN PROJECT COMMENT
+router.put(
+  "/:id/comments/:commentId",
+  authorizeProjectCommentAuthor,
+  updateProjectComment
+);
+
+// DELETE OWN PROJECT COMMENT
+router.delete(
+  "/:id/comments/:commentId",
+  authorizeProjectCommentAuthor,
+  deleteProjectComment
+);
 
 // READ ONE
 router.get("/:id", getProjectById);

@@ -26,6 +26,9 @@ const projectActivitySchema = new mongoose.Schema(
         "TASK_DELETED",
         "MEMBER_ADDED",
         "MEMBER_REMOVED",
+          "COMMENT_ADDED",
+    "COMMENT_UPDATED",
+    "COMMENT_DELETED",
       ],
     },
 

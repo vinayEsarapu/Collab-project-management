@@ -9,6 +9,7 @@ import {
   getUsersForMemberSelection,
   addMember,
   removeMember,
+   createProjectComment,
 } from "../services/projectservices";
 import { useAuth } from "../context/Authcontext.jsx";
 
@@ -238,10 +239,31 @@ const handlePostComment = async () => {
     return;
   }
 
-  setCommentError("");
-  setCommentSuccess("");
+  try {
+    setIsPostingComment(true);
+    setCommentError("");
+    setCommentSuccess("");
 
-  // Backend API will be connected here later.
+    await createProjectComment(id, comment);
+
+    setCommentText("");
+
+    setCommentSuccess(
+      "Comment posted successfully."
+    );
+  } catch (error) {
+    console.error(
+      "Failed to post project comment:",
+      error
+    );
+
+    setCommentError(
+      error.response?.data?.message ||
+        "Unable to post comment."
+    );
+  } finally {
+    setIsPostingComment(false);
+  }
 };
 
 

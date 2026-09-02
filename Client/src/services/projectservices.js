@@ -102,5 +102,65 @@ export const getProjectActivity = async (
 
   return response.data;
 };
+
+// PROJECT COMMENTS
+
+export const getProjectComments = async (
+  projectId,
+  page = 1,
+  limit = 10
+) => {
+  const response = await api.get(
+    `/projects/${projectId}/comments`,
+    {
+      params: {
+        page,
+        limit,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const createProjectComment = async (
+  projectId,
+  content
+) => {
+  const response = await api.post(
+    `/projects/${projectId}/comments`,
+    {
+      content,
+    }
+  );
+
+  return response.data;
+};
+
+export const updateProjectComment = async (
+  projectId,
+  commentId,
+  content
+) => {
+  const response = await api.put(
+    `/projects/${projectId}/comments/${commentId}`,
+    {
+      content,
+    }
+  );
+
+  return response.data;
+};
+
+export const deleteProjectComment = async (
+  projectId,
+  commentId
+) => {
+  const response = await api.delete(
+    `/projects/${projectId}/comments/${commentId}`
+  );
+
+  return response.data;
+};
  
 //export default projectService;

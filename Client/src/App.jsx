@@ -13,6 +13,7 @@ import Home from "./pages/Home";
 import Activity from "./pages/Activity";
 import Comments from "./pages/Comments";
 import ProjectActivity from "./pages/ProjectActivity";
+import ProjectComments from "./pages/ProjectComments";
 
 function ProtectedLayout() {
   return (
@@ -68,9 +69,9 @@ function App() {
             element={<Issues />}
           />
 
-          <Route
+         <Route
   path="/projects/:id/comments"
-  element={<Comments />}
+  element={<ProjectComments />}
 />
 
           <Route
