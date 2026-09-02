@@ -16,6 +16,7 @@ function TaskIssues() {
   const {
     id: projectId,
     taskId,
+     issueId,
   } = useParams();
 
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ function TaskIssues() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState( issueId === "new");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] =
@@ -74,6 +75,12 @@ function TaskIssues() {
       fetchData();
     }
   }, [projectId, taskId]);
+
+  useEffect(() => {
+  if (issueId === "new") {
+    setShowForm(true);
+  }
+}, [issueId]);
 
   const handleCreateIssue = async (issueData) => {
     try {

@@ -2,9 +2,8 @@ import axios from "axios";
 import {
   getAccessToken,
   setAccessToken,
-  clearAccessToken
+  clearAccessToken,
 } from "./tokenManager";
-
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -14,7 +13,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Add access token to requests
+// Attach current access token
 api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
@@ -25,16 +24,13 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Refresh access token when it expires
+// Refresh expired access token
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
@@ -50,15 +46,27 @@ api.interceptors.response.use(
 
         const newAccessToken = response.data.accessToken;
 
+        // Store the new token
         setAccessToken(newAccessToken);
 
+        // Tell AuthContext that the token changed
+        window.dispatchEvent(
+          new CustomEvent("auth-token-refreshed", {
+            detail: newAccessToken,
+          })
+        );
+
+        // Retry original request
         originalRequest.headers.Authorization =
           `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
-
       } catch (refreshError) {
         clearAccessToken();
+
+        window.dispatchEvent(
+          new Event("auth-session-expired")
+        );
 
         return Promise.reject(refreshError);
       }

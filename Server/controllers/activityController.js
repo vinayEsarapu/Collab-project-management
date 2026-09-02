@@ -152,16 +152,9 @@ const getTaskActivities = async (req, res) => {
     }
 
     // Find all issues belonging to this task
-    const taskIssues = await Issue.find({
-      project: project._id,
-      task: taskId,
-    }).select("_id");
-
-    const issueIds = taskIssues.map((issue) => issue._id);
-
     const filter = {
-      issue: { $in: issueIds },
-    };
+  task: taskId,
+};
 
     // Optional single-day filter
     if (date) {
@@ -198,11 +191,11 @@ const getTaskActivities = async (req, res) => {
     const skip = (currentPage - 1) * limit;
 
     const activities = await Activity.find(filter)
-      .populate("user", "name email")
-      .populate("issue", "title")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+  .populate("user", "name email")
+  .populate("issue", "title")
+  .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
 
     res.status(200).json({
       count: activities.length,

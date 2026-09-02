@@ -16,7 +16,36 @@ const {
 
 const router = express.Router();
 
-// Get comments for a task-level issue
+/*
+ * ==================================================
+ * TASK-LEVEL COMMENTS
+ * ==================================================
+ */
+
+// Get comments for a task
+router.get(
+  "/task/:taskId",
+  authMiddleware,
+  authorizeCommentMember,
+  getComments
+);
+
+// Add comment to a task
+router.post(
+  "/task/:taskId",
+  authMiddleware,
+  authorizeCommentMember,
+  createComment
+);
+
+
+/*
+ * ==================================================
+ * TASK ISSUE COMMENTS
+ * ==================================================
+ */
+
+// Get comments for an issue inside a task
 router.get(
   "/task/:taskId/issue/:issueId",
   authMiddleware,
@@ -24,13 +53,20 @@ router.get(
   getComments
 );
 
-// Add comment to a task-level issue
+// Add comment to an issue inside a task
 router.post(
   "/task/:taskId/issue/:issueId",
   authMiddleware,
   authorizeCommentMember,
   createComment
 );
+
+
+/*
+ * ==================================================
+ * NORMAL ISSUE COMMENTS
+ * ==================================================
+ */
 
 // Get comments for an issue
 router.get(
@@ -48,7 +84,13 @@ router.post(
   createComment
 );
 
-// Update own comment
+
+/*
+ * ==================================================
+ * UPDATE / DELETE
+ * ==================================================
+ */
+
 router.put(
   "/:commentId",
   authMiddleware,
@@ -56,7 +98,6 @@ router.put(
   updateComment
 );
 
-// Delete own comment
 router.delete(
   "/:commentId",
   authMiddleware,

@@ -12,7 +12,12 @@ const commentSchema = new mongoose.Schema(
     issue: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Issue",
-      required: true,
+      default: null,
+    },
+
+    task: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
     },
 
     createdBy: {
@@ -25,5 +30,15 @@ const commentSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+commentSchema.index({
+  issue: 1,
+  createdAt: -1,
+});
+
+commentSchema.index({
+  task: 1,
+  createdAt: -1,
+});
 
 module.exports = mongoose.model("Comment", commentSchema);

@@ -153,10 +153,10 @@ function Comments() {
   // --------------------------------------------------
 
   useEffect(() => {
-    if (issueId) {
+    if (taskId ||issueId) {
       fetchComments();
     }
-  }, [issueId, page, name]);
+  }, [taskId, issueId, page, name]);
 
   // --------------------------------------------------
   // Name filter
@@ -310,21 +310,39 @@ function Comments() {
       <div className="mx-auto max-w-5xl">
 
         {/* Back */}
+
         <Link
   to={
-    taskId
+    taskId && issueId
       ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`
+      : taskId
+      ? `/projects/${projectId}/tasks/${taskId}`
       : `/projects/${projectId}/issues/${issueId}`
   }
-  className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+  
 >
-  ← Back to Issue
+
+  ← Back
 </Link>
+
         {/* Header */}
         <div className="mt-6">
           <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
-             {taskId ? "Task Issue Comments" : "Issue Comments"}
-            Issue Comments
+           <h1>
+  {taskId && issueId
+    ? "Task Issue Comments"
+    : taskId
+    ? "Task Comments"
+    : "Issue Comments"}
+</h1>
+
+<p>
+  {taskId && issueId
+    ? "View and discuss comments related to this task issue."
+    : taskId
+    ? "View and discuss comments related to this task."
+    : "View and discuss comments related to this issue."}
+</p>
           </p>
 
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">

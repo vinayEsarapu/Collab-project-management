@@ -1,6 +1,6 @@
 import api from "./api";
 
-// Get comments with pagination and optional name filter
+
 export const getComments = async (
   issueId,
   page = 1,
@@ -17,9 +17,34 @@ export const getComments = async (
     params.append("name", name.trim());
   }
 
-  const endpoint = taskId
-    ? `/comments/task/${taskId}/issue/${issueId}`
-    : `/comments/issue/${issueId}`;
+  let endpoint;
+
+  /*
+   * Task Issue Comments
+   */
+  if (taskId && issueId) {
+    endpoint = `/comments/task/${taskId}/issue/${issueId}`;
+  }
+
+  /*
+   * Task-level Comments
+   */
+  else if (taskId) {
+    endpoint = `/comments/task/${taskId}`;
+  }
+
+  /*
+   * Normal Issue Comments
+   */
+  else if (issueId) {
+    endpoint = `/comments/issue/${issueId}`;
+  }
+
+  else {
+    throw new Error(
+      "Either issueId or taskId is required"
+    );
+  }
 
   const response = await api.get(
     `${endpoint}?${params.toString()}`
@@ -29,15 +54,39 @@ export const getComments = async (
 };
 
 
-// Create a comment
 export const createComment = async (
   issueId,
   content,
   taskId = null
 ) => {
-  const endpoint = taskId
-    ? `/comments/task/${taskId}/issue/${issueId}`
-    : `/comments/issue/${issueId}`;
+  let endpoint;
+
+  /*
+   * Task Issue Comment
+   */
+  if (taskId && issueId) {
+    endpoint = `/comments/task/${taskId}/issue/${issueId}`;
+  }
+
+  /*
+   * Task-level Comment
+   */
+  else if (taskId) {
+    endpoint = `/comments/task/${taskId}`;
+  }
+
+  /*
+   * Normal Issue Comment
+   */
+  else if (issueId) {
+    endpoint = `/comments/issue/${issueId}`;
+  }
+
+  else {
+    throw new Error(
+      "Either issueId or taskId is required"
+    );
+  }
 
   const response = await api.post(
     endpoint,
@@ -50,7 +99,6 @@ export const createComment = async (
 };
 
 
-// Update own comment
 export const updateComment = async (
   commentId,
   content
@@ -66,7 +114,6 @@ export const updateComment = async (
 };
 
 
-// Delete own comment
 export const deleteComment = async (
   commentId
 ) => {

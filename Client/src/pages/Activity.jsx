@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getIssueActivities } from "../services/activityService";
+import { getIssueActivities ,  getTaskActivities, } from "../services/activityService";
 
 function Activity() {
   const { id: projectId,  taskId, issueId } = useParams();
@@ -69,10 +69,10 @@ function Activity() {
   };
 
   useEffect(() => {
-    if (issueId) {
+    if ( taskId || issueId) {
       fetchActivities();
     }
-  }, [issueId, page, selectedDate]);
+  }, [taskId, issueId, page, selectedDate]);
 
   const handleDateChange = (event) => {
     setSelectedDate(event.target.value);
@@ -129,10 +129,43 @@ function Activity() {
     case "COMMENT_DELETED":
       return "deleted a comment";
 
+      case "TASK_CREATED":
+  return "created this task";
+
+case "TASK_UPDATED":
+  return "updated this task";
+
+case "TASK_DELETED":
+  return "deleted this task";
+
+case "TASK_ASSIGNED":
+  return "assigned this task";
+
+case "TASK_REASSIGNED":
+  return "reassigned this task";
+
+case "TASK_UNASSIGNED":
+  return "removed the task assignment";
+
+case "TASK_STATUS_CHANGED":
+  return `changed status from ${
+    details.from || "Unknown"
+  } to ${details.to || "Unknown"}`;
+
+case "TASK_PRIORITY_CHANGED":
+  return `changed priority from ${
+    details.from || "Unknown"
+  } to ${details.to || "Unknown"}`;
+
       default:
-        return "updated this issue";
+  return taskId
+    ? "updated this task"
+    : "updated this issue";
     }
   };
+
+  
+
 
     return (
   <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
@@ -161,9 +194,9 @@ function Activity() {
         </h1>
 
         <p className="mt-2 text-sm text-slate-400">
-          {taskId
-            ? "Track important changes made to this task and its issues."
-            : "Track important changes made to this issue."}
+         {taskId
+  ? "Track important changes made to this task."
+  : "Track important changes made to this issue."}
         </p>
       </div>
 

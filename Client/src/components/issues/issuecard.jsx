@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-function IssueCard({ issue ,  projectId}) {
+function IssueCard({ issue ,  projectId , taskId}) {
 
   
  return (

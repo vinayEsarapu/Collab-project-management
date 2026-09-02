@@ -117,7 +117,7 @@ const authorizeIssueCreation = async (req, res, next) => {
     );
 
     if (req.body.task) {
-  const task = req.project.tasks.id(req.body.task);
+  const task = project.tasks.id(req.body.task);
 
   if (!task) {
     return res.status(400).json({

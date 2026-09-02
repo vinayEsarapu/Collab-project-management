@@ -1,6 +1,7 @@
 const Project = require("../models/Project.js");
 const User = require("../models/user.js");
 const ProjectActivity = require("../models/ProjectActivity.js");
+const { createActivity } = require("../services/activityService");
 const mongoose = require("mongoose");
 //const ProjectLog = require("../models/ProjectLog");
 
@@ -65,7 +66,7 @@ const addTask = async (req, res, next) => {
 
     const task = {
       title: title.trim(),
-      description: description.trim(),
+      description: description ? description.trim() : "",
       status: status || "Planning",
       priority: priority || "Medium",
       assignedTo: assignedTo || null,
@@ -77,6 +78,16 @@ const addTask = async (req, res, next) => {
 
     const createdTask =
       project.tasks[project.tasks.length - 1];
+
+      await createActivity({
+  task: createdTask._id,
+  project: project._id,
+  user: req.user.userId,
+  action: "TASK_CREATED",
+  details: {
+    title: createdTask.title,
+  },
+});
 
     res.status(201).json({
       message: "Task created successfully",
@@ -162,40 +173,118 @@ const updateTask = async (req, res, next) => {
         });
       }
     }
+    const changes = [];
 
     if (title !== undefined) {
-      if (!title.trim()) {
-        return res.status(400).json({
-          message: "Task title cannot be empty",
-        });
-      }
+  if (!title.trim()) {
+    return res.status(400).json({
+      message: "Task title cannot be empty",
+    });
+  }
 
-      task.title = title.trim();
+  const newTitle = title.trim();
+
+  if (task.title !== newTitle) {
+    changes.push({
+      action: "TASK_UPDATED",
+      details: {
+        field: "title",
+        from: task.title,
+        to: newTitle,
+      },
+    });
+
+    task.title = newTitle;
+  }
+}
+
+if (description !== undefined) {
+  if (!description.trim()) {
+    return res.status(400).json({
+      message: "Task description cannot be empty",
+    });
+  }
+
+  const newDescription = description.trim();
+
+  if (task.description !== newDescription) {
+    changes.push({
+      action: "TASK_UPDATED",
+      details: {
+        field: "description",
+        from: task.description,
+        to: newDescription,
+      },
+    });
+
+    task.description = newDescription;
+  }
+}
+
+if (status !== undefined && task.status !== status) {
+  changes.push({
+    action: "TASK_STATUS_CHANGED",
+    details: {
+      from: task.status,
+      to: status,
+    },
+  });
+
+  task.status = status;
+}
+
+if (priority !== undefined && task.priority !== priority) {
+  changes.push({
+    action: "TASK_PRIORITY_CHANGED",
+    details: {
+      from: task.priority,
+      to: priority,
+    },
+  });
+
+  task.priority = priority;
+}
+
+if (assignedTo !== undefined) {
+  const oldAssignedTo = task.assignedTo
+    ? task.assignedTo.toString()
+    : null;
+
+  const newAssignedTo = assignedTo
+    ? assignedTo.toString()
+    : null;
+
+  if (oldAssignedTo !== newAssignedTo) {
+    let action = "TASK_ASSIGNED";
+
+    if (oldAssignedTo && newAssignedTo) {
+      action = "TASK_REASSIGNED";
+    } else if (oldAssignedTo && !newAssignedTo) {
+      action = "TASK_UNASSIGNED";
     }
 
-    if (description !== undefined) {
-      if (!description.trim()) {
-        return res.status(400).json({
-          message: "Task description cannot be empty",
-        });
-      }
+    changes.push({
+      action,
+      details: {
+        from: oldAssignedTo,
+        to: newAssignedTo,
+      },
+    });
 
-      task.description = description.trim();
-    }
-
-    if (status !== undefined) {
-      task.status = status;
-    }
-
-    if (priority !== undefined) {
-      task.priority = priority;
-    }
-
-    if (assignedTo !== undefined) {
-      task.assignedTo = assignedTo || null;
-    }
-
+    task.assignedTo = assignedTo || null;
+  }
+}
     await project.save();
+
+    for (const change of changes) {
+  await createActivity({
+    task: task._id,
+    project: project._id,
+    user: req.user.userId,
+    action: change.action,
+    details: change.details,
+  });
+}
 
     res.status(200).json({
       message: "Task updated successfully",
@@ -236,10 +325,21 @@ const deleteTask = async (req, res, next) => {
         message: "Task not found",
       });
     }
+    await createActivity({
+  task: task._id,
+  project: project._id,
+  user: req.user.userId,
+  action: "TASK_DELETED",
+  details: {
+    title: task.title,
+  },
+});
 
     task.deleteOne();
 
     await project.save();
+
+    
 
     res.status(200).json({
       message: "Task deleted successfully",

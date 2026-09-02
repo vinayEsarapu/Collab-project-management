@@ -77,9 +77,19 @@ function App() {
          element={<TaskIssues />}
        />
 
+       <Route
+         path="/projects/:id/tasks/:taskId/issues/new"
+         element={<TaskIssues />}
+       />
+
          <Route
            path="/projects/:id/tasks/:taskId/issues/:issueId"
            element={<IssueDetails />}
+         />
+
+         <Route
+          path="/projects/:id/tasks/:taskId/issues/:issueId/comments"
+          element={<Comments />}
          />
 
           <Route
@@ -111,9 +121,19 @@ function App() {
           />
 
           <Route
-            path="/projects/:id/tasks/:taskId/issues/:issueId/comments"
+            path="/projects/:id/tasks/:taskId/comments"
             element={<Comments />}
           />
+
+          <Route
+  path="/projects/:id/tasks/:taskId/issues/:issueId/activity"
+  element={<Activity />}
+/>
+
+       <Route
+          path="/projects/:id/tasks/:taskId/activity"
+           element={<Activity />}
+         />
 
           
         </Route>

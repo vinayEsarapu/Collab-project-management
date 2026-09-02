@@ -1,7 +1,8 @@
 const Activity = require("../models/activity");
 
 const createActivity = async ({
-  issue,
+  issue = null,
+  task = null,
   project,
   user,
   action,
@@ -10,6 +11,7 @@ const createActivity = async ({
   try {
     return await Activity.create({
       issue,
+      task,
       project,
       user,
       action,
@@ -19,7 +21,6 @@ const createActivity = async ({
     console.error("Failed to create activity:", error);
   }
 };
-
 
 module.exports = {
   createActivity,

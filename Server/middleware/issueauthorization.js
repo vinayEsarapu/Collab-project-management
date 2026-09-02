@@ -35,7 +35,7 @@ const checkTaskIssueAccess = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner =
       project.owner.toString() === userId;

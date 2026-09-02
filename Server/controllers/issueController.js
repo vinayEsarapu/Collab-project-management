@@ -53,19 +53,20 @@ const createIssue = async (req, res) => {
       assignedTo: assignedTo || null,
     });
 
-    await createActivity({
-      issue: issue._id,
-      project: issue.project,
-      user: req.user.userId,
-      action: "ISSUE_CREATED",
-    });
-
+   await createActivity({
+  issue: issue._id,
+  task: issue.task || null,
+  project: issue.project,
+  user: req.user.userId,
+  action: "ISSUE_CREATED",
+});
     if (assignedTo) {
       await createActivity({
-        issue: issue._id,
-        project: issue.project,
-        user: req.user.userId,
-        action: "ISSUE_ASSIGNED",
+  issue: issue._id,
+  task: issue.task || null,
+  project: issue.project,
+  user: req.user.userId,
+  action: "ISSUE_ASSIGNED",
         details: {
           assignedTo: assignedTo.toString(),
         },
@@ -106,7 +107,7 @@ const getIssuesByTask = async (req, res, next) => {
       });
     }
 
-    const userId = req.user._id.toString();
+    const userId = req.user.userId.toString();
 
     const isOwner =
       project.owner._id.toString() === userId;
@@ -164,7 +165,7 @@ const getIssues = async (req, res) => {
     const projectIds = projects.map((project) => project._id);
 
     const issues = await Issue.find({
-      project: { $in: projectIds },
+      project: { $in: projectIds },   task: null,
     })
       .populate("project", "name description")
       .populate("createdBy", "name email")
@@ -292,6 +293,7 @@ const updateIssue = async (req, res) => {
     if (statusChanged) {
       await createActivity({
         issue: issue._id,
+         task: issue.task || null,
         project: issue.project,
         user: req.user.userId,
         action: "STATUS_CHANGED",
@@ -306,6 +308,7 @@ const updateIssue = async (req, res) => {
     if (priorityChanged) {
       await createActivity({
         issue: issue._id,
+          task: issue.task || null,
         project: issue.project,
         user: req.user.userId,
         action: "PRIORITY_CHANGED",
@@ -323,6 +326,7 @@ const updateIssue = async (req, res) => {
     await createActivity({
       issue: issue._id,
       project: issue.project,
+      task: issue.task || null,
       user: req.user.userId,
       action: "ISSUE_UNASSIGNED",
       details: {},
@@ -331,6 +335,7 @@ const updateIssue = async (req, res) => {
     await createActivity({
       issue: issue._id,
       project: issue.project,
+      task: issue.task || null,
       user: req.user.userId,
       action: "ISSUE_ASSIGNED",
       details: {
@@ -341,6 +346,7 @@ const updateIssue = async (req, res) => {
     await createActivity({
       issue: issue._id,
       project: issue.project,
+      task: issue.task || null,
       user: req.user.userId,
       action: "ISSUE_REASSIGNED",
       details: {
@@ -360,6 +366,7 @@ const updateIssue = async (req, res) => {
       await createActivity({
         issue: issue._id,
         project: issue.project,
+         task: issue.task || null,
         user: req.user.userId,
         action: "ISSUE_UPDATED",
         details: {
@@ -400,6 +407,19 @@ const deleteIssue = async (req, res) => {
       });
     }
 
+    // Log deletion before removing the issue
+    await createActivity({
+      issue: issue._id,
+      task: issue.task || null,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_UPDATED",
+      details: {
+        deleted: true,
+        title: issue.title,
+      },
+    });
+
     await Issue.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
@@ -412,7 +432,6 @@ const deleteIssue = async (req, res) => {
     });
   }
 };
-
 // Get issues by project
 // Get project-level issues only
 const getIssuesByProject = async (req, res) => {

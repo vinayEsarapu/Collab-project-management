@@ -2,10 +2,17 @@ const mongoose = require("mongoose");
 
 const activitySchema = new mongoose.Schema(
   {
+    // Activity can belong to an issue
     issue: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Issue",
-      required: true,
+      default: null,
+    },
+
+    // Activity can also belong directly to an embedded task
+    task: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
     },
 
     project: {
@@ -34,6 +41,16 @@ const activitySchema = new mongoose.Schema(
         "COMMENT_ADDED",
         "COMMENT_UPDATED",
         "COMMENT_DELETED",
+
+        // Task actions
+        "TASK_CREATED",
+        "TASK_UPDATED",
+        "TASK_DELETED",
+        "TASK_ASSIGNED",
+        "TASK_REASSIGNED",
+        "TASK_UNASSIGNED",
+        "TASK_STATUS_CHANGED",
+        "TASK_PRIORITY_CHANGED",
       ],
     },
 
@@ -47,6 +64,22 @@ const activitySchema = new mongoose.Schema(
   }
 );
 
-activitySchema.index({ issue: 1, createdAt: -1 });
+// Existing issue activity queries
+activitySchema.index({
+  issue: 1,
+  createdAt: -1,
+});
+
+// Task activity queries
+activitySchema.index({
+  task: 1,
+  createdAt: -1,
+});
+
+// Project activity queries
+activitySchema.index({
+  project: 1,
+  createdAt: -1,
+});
 
 module.exports = mongoose.model("Activity", activitySchema);

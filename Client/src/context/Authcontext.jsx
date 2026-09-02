@@ -30,22 +30,55 @@ export const AuthProvider = ({ children }) => {
 
       const userResponse = await api.get("/auth/me", {
         headers: {
-          Authorization: `Bearer ${newAccessToken}`
-        }
+          Authorization: `Bearer ${newAccessToken}`,
+        },
       });
 
       setUser(userResponse.data.user);
-
     } catch (error) {
       setAccessToken(null);
       setUser(null);
-
+      clearAccessToken();
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleTokenRefresh = (event) => {
+    const newToken = event.detail;
+
+    setAccessToken(newToken);
+  };
+
+  const handleSessionExpired = () => {
+    setAccessToken(null);
+    setUser(null);
+    clearAccessToken();
+  };
+
+  window.addEventListener(
+    "auth-token-refreshed",
+    handleTokenRefresh
+  );
+
+  window.addEventListener(
+    "auth-session-expired",
+    handleSessionExpired
+  );
+
   restoreSession();
+
+  return () => {
+    window.removeEventListener(
+      "auth-token-refreshed",
+      handleTokenRefresh
+    );
+
+    window.removeEventListener(
+      "auth-session-expired",
+      handleSessionExpired
+    );
+  };
 }, []);
 
   const login = (userData, token) => {
@@ -53,11 +86,17 @@ export const AuthProvider = ({ children }) => {
   setAccessToken(token);
   storeAccessToken(token);
 };
-  const logout = () => {
+const logout = async () => {
+  try {
+    await api.post("/auth/logout");
+  } catch (error) {
+    console.error("Logout error:", error);
+  } finally {
     setUser(null);
     setAccessToken(null);
     clearAccessToken();
-  };
+  }
+};
 
   const isAuthenticated = !!accessToken;
 

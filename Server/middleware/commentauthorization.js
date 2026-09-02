@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const Comment = require("../models/comment");
 const Issue = require("../models/issues");
 const Project = require("../models/Project");
@@ -6,53 +8,114 @@ const authorizeCommentMember = async (req, res, next) => {
   try {
     const { issueId, taskId } = req.params;
 
-    const issue = await Issue.findById(issueId);
+    let issue = null;
+    let task = null;
+    let project = null;
 
-    if (!issue) {
-      return res.status(404).json({
-        message: "Issue not found",
-      });
+    /*
+     * --------------------------------------------------
+     * ISSUE COMMENT
+     * /comments/issue/:issueId
+     * --------------------------------------------------
+     */
+    if (issueId) {
+      if (!mongoose.Types.ObjectId.isValid(issueId)) {
+        return res.status(400).json({
+          message: "Invalid issue ID",
+        });
+      }
+
+      issue = await Issue.findById(issueId);
+
+      if (!issue) {
+        return res.status(404).json({
+          message: "Issue not found",
+        });
+      }
+
+      project = await Project.findById(issue.project);
+
+      if (!project) {
+        return res.status(404).json({
+          message: "Associated project not found",
+        });
+      }
+
+      /*
+       * ------------------------------------------------
+       * TASK ISSUE COMMENT
+       * /comments/task/:taskId/issue/:issueId
+       * ------------------------------------------------
+       */
+      if (taskId) {
+        if (!mongoose.Types.ObjectId.isValid(taskId)) {
+          return res.status(400).json({
+            message: "Invalid task ID",
+          });
+        }
+
+        task = project.tasks.id(taskId);
+
+        if (!task) {
+          return res.status(404).json({
+            message: "Task not found in this project",
+          });
+        }
+
+        if (
+          !issue.task ||
+          issue.task.toString() !== taskId.toString()
+        ) {
+          return res.status(403).json({
+            message:
+              "This issue does not belong to the requested task",
+          });
+        }
+      }
     }
 
-    const project = await Project.findById(issue.project);
+    /*
+     * --------------------------------------------------
+     * TASK-LEVEL COMMENT
+     * /comments/task/:taskId
+     * --------------------------------------------------
+     */
+    else if (taskId) {
+      if (!mongoose.Types.ObjectId.isValid(taskId)) {
+        return res.status(400).json({
+          message: "Invalid task ID",
+        });
+      }
 
-    if (!project) {
-      return res.status(404).json({
-        message: "Associated project not found",
+      // Tasks are embedded inside Project.
+      project = await Project.findOne({
+        "tasks._id": taskId,
       });
-    }
 
-    // -----------------------------------------
-    // Task-level issue validation
-    // -----------------------------------------
+      if (!project) {
+        return res.status(404).json({
+          message: "Task not found",
+        });
+      }
 
-    if (taskId) {
-      const task = project.tasks.id(taskId);
+      task = project.tasks.id(taskId);
 
       if (!task) {
         return res.status(404).json({
-          message: "Task not found in this project",
+          message: "Task not found",
         });
       }
-
-      // Make sure this issue actually belongs
-      // to the requested task.
-      if (
-        !issue.task ||
-        issue.task.toString() !== taskId.toString()
-      ) {
-        return res.status(403).json({
-          message:
-            "This issue does not belong to the requested task",
-        });
-      }
-
-      req.task = task;
+    } else {
+      return res.status(400).json({
+        message: "Issue ID or Task ID is required",
+      });
     }
 
-    // -----------------------------------------
-    // Existing project authorization
-    // -----------------------------------------
+    /*
+     * --------------------------------------------------
+     * PROJECT MEMBERSHIP
+     * --------------------------------------------------
+     */
 
     const userId = req.user.userId.toString();
 
@@ -71,6 +134,7 @@ const authorizeCommentMember = async (req, res, next) => {
     }
 
     req.issue = issue;
+    req.task = task;
     req.project = project;
 
     next();
@@ -79,9 +143,16 @@ const authorizeCommentMember = async (req, res, next) => {
   }
 };
 
+
 const authorizeCommentAuthor = async (req, res, next) => {
   try {
-    const commentId = req.params.commentId;
+    const { commentId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({
+        message: "Invalid comment ID",
+      });
+    }
 
     const comment = await Comment.findById(commentId);
 
@@ -91,21 +162,81 @@ const authorizeCommentAuthor = async (req, res, next) => {
       });
     }
 
-    const issue = await Issue.findById(comment.issue);
+    let issue = null;
+    let task = null;
+    let project = null;
 
-    if (!issue) {
-      return res.status(404).json({
-        message: "Associated issue not found",
+    /*
+     * -----------------------------------------------
+     * COMMENT BELONGS TO ISSUE
+     * -----------------------------------------------
+     */
+    if (comment.issue) {
+      issue = await Issue.findById(comment.issue);
+
+      if (!issue) {
+        return res.status(404).json({
+          message: "Associated issue not found",
+        });
+      }
+
+      project = await Project.findById(issue.project);
+
+      if (!project) {
+        return res.status(404).json({
+          message: "Associated project not found",
+        });
+      }
+
+      /*
+       * If this issue comment also belongs to a task,
+       * resolve that task.
+       */
+      if (comment.task) {
+        task = project.tasks.id(comment.task);
+
+        if (!task) {
+          return res.status(404).json({
+            message: "Associated task not found",
+          });
+        }
+      }
+    }
+
+    /*
+     * -----------------------------------------------
+     * COMMENT BELONGS DIRECTLY TO TASK
+     * -----------------------------------------------
+     */
+    else if (comment.task) {
+      project = await Project.findOne({
+        "tasks._id": comment.task,
+      });
+
+      if (!project) {
+        return res.status(404).json({
+          message: "Associated task not found",
+        });
+      }
+
+      task = project.tasks.id(comment.task);
+
+      if (!task) {
+        return res.status(404).json({
+          message: "Associated task not found",
+        });
+      }
+    } else {
+      return res.status(400).json({
+        message: "Comment has no valid parent",
       });
     }
 
-    const project = await Project.findById(issue.project);
-
-    if (!project) {
-      return res.status(404).json({
-        message: "Associated project not found",
-      });
-    }
+    /*
+     * -----------------------------------------------
+     * PROJECT AUTHORIZATION
+     * -----------------------------------------------
+     */
 
     const userId = req.user.userId.toString();
 
@@ -123,6 +254,9 @@ const authorizeCommentAuthor = async (req, res, next) => {
       });
     }
 
+    /*
+     * Only comment author can edit/delete.
+     */
     const isAuthor =
       comment.createdBy.toString() === userId;
 
@@ -135,6 +269,7 @@ const authorizeCommentAuthor = async (req, res, next) => {
 
     req.comment = comment;
     req.issue = issue;
+    req.task = task;
     req.project = project;
 
     next();
@@ -142,6 +277,7 @@ const authorizeCommentAuthor = async (req, res, next) => {
     next(error);
   }
 };
+
 
 module.exports = {
   authorizeCommentMember,

@@ -1,90 +1,89 @@
-const { createActivity } = require("../services/activityService");
 const mongoose = require("mongoose");
 const Comment = require("../models/comment");
 const Issue = require("../models/issues");
 const User = require("../models/user");
 
+const { createActivity } = require("../services/activityService");
 
-// Get comments for an issue
-// Supports:
-// ?page=1
-// ?limit=10
-// ?name=vinay
-//
-// Filtering happens BEFORE pagination.
+
+/*
+ * ==================================================
+ * GET COMMENTS
+ * ==================================================
+ */
+
 const getComments = async (req, res) => {
   try {
-    const { issueId } = req.params;
+    const { issueId, taskId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(issueId)) {
+    /*
+     * Validate parent.
+     */
+    if (!issueId && !taskId) {
+      return res.status(400).json({
+        message: "Issue ID or Task ID is required",
+      });
+    }
+
+    if (
+      issueId &&
+      !mongoose.Types.ObjectId.isValid(issueId)
+    ) {
       return res.status(400).json({
         message: "Invalid issue ID",
       });
     }
 
-    const issue = await Issue.findById(issueId);
-
-    if (!issue) {
-      return res.status(404).json({
-        message: "Issue not found",
+    if (
+      taskId &&
+      !mongoose.Types.ObjectId.isValid(taskId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid task ID",
       });
     }
 
-    // -----------------------------
-    // Pagination
-    // -----------------------------
-
+    /*
+     * Pagination.
+     */
     const requestedPage =
       parseInt(req.query.page, 10) || 1;
 
     const requestedLimit =
       parseInt(req.query.limit, 10) || 10;
 
-    // Prevent invalid/very large limits
     const limit = Math.min(
       Math.max(requestedLimit, 1),
       50
     );
 
-    const page = Math.max(
-      requestedPage,
-      1
-    );
-
-    // -----------------------------
-    // Name filter
-    // -----------------------------
+    const page = Math.max(requestedPage, 1);
 
     const name =
       (req.query.name || "").trim();
 
-    const filter = {
-      issue: issueId,
-    };
+    /*
+     * Build comment filter.
+     */
+    const filter = issueId
+      ? { issue: issueId }
+      : { task: taskId };
 
     /*
-     * Comments store createdBy as a User reference.
-     *
-     * Therefore:
-     * 1. Find users whose names match the search.
-     * 2. Get their IDs.
-     * 3. Filter comments using those IDs.
+     * Name filter.
      */
     if (name) {
-      const matchingUsers =
-        await User.find({
-          name: {
-            $regex: name,
-            $options: "i",
-          },
-        }).select("_id");
+      const matchingUsers = await User.find({
+        name: {
+          $regex: name,
+          $options: "i",
+        },
+      }).select("_id");
 
-      const userIds =
-        matchingUsers.map(
-          (user) => user._id
-        );
+      const userIds = matchingUsers.map(
+        (user) => user._id
+      );
 
-      // No users matched the name
       if (userIds.length === 0) {
         return res.status(200).json({
           count: 0,
@@ -105,82 +104,53 @@ const getComments = async (req, res) => {
       };
     }
 
-    // -----------------------------
-    // Count filtered comments
-    // -----------------------------
-
+    /*
+     * Total comments.
+     */
     const totalComments =
-      await Comment.countDocuments(
-        filter
-      );
+      await Comment.countDocuments(filter);
 
     const totalPages =
       totalComments === 0
         ? 0
-        : Math.ceil(
-            totalComments / limit
-          );
+        : Math.ceil(totalComments / limit);
 
-    /*
-     * If requested page doesn't exist,
-     * use the last available page.
-     */
     const currentPage =
       totalPages === 0
         ? 1
-        : Math.min(
-            page,
-            totalPages
-          );
+        : Math.min(page, totalPages);
 
     const skip =
       (currentPage - 1) * limit;
 
-    // -----------------------------
-    // Get paginated comments
-    // -----------------------------
-
+    /*
+     * Fetch comments.
+     */
     const comments =
       await Comment.find(filter)
-        .populate(
-          "createdBy",
-          "name email"
-        )
-        .sort({
-          createdAt: -1,
-        })
+        .populate("createdBy", "name email")
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
 
-    // -----------------------------
-    // Response
-    // -----------------------------
-
-    res.status(200).json({
+    return res.status(200).json({
       count: comments.length,
       comments,
-
       pagination: {
         currentPage,
         totalPages,
         totalComments,
         limit,
-
         hasNextPage:
           currentPage < totalPages,
-
         hasPreviousPage:
           currentPage > 1,
       },
     });
-
   } catch (error) {
-    console.error(
-      "Get comments error:",
-      error
-    );
+    console.error("Get comments error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to fetch comments",
       error: error.message,
     });
@@ -188,41 +158,112 @@ const getComments = async (req, res) => {
 };
 
 
-// Create a comment
+/*
+ * ==================================================
+ * CREATE COMMENT
+ * ==================================================
+ */
+
 const createComment = async (req, res) => {
   try {
-    const { issueId } = req.params;
+    const { issueId, taskId } = req.params;
     const { content } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(issueId)) {
+    /*
+     * Parent validation.
+     */
+    if (!issueId && !taskId) {
+      return res.status(400).json({
+        message: "Issue ID or Task ID is required",
+      });
+    }
+
+    if (
+      issueId &&
+      !mongoose.Types.ObjectId.isValid(issueId)
+    ) {
       return res.status(400).json({
         message: "Invalid issue ID",
       });
     }
 
+    if (
+      taskId &&
+      !mongoose.Types.ObjectId.isValid(taskId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid task ID",
+      });
+    }
+
+    /*
+     * Content validation.
+     */
     if (!content || !content.trim()) {
       return res.status(400).json({
         message: "Comment cannot be empty",
       });
     }
 
-    const issue = await Issue.findById(issueId);
+    /*
+     * ----------------------------------------------
+     * ISSUE COMMENT
+     * ----------------------------------------------
+     */
+    if (issueId) {
+      const issue = await Issue.findById(issueId);
 
-    if (!issue) {
-      return res.status(404).json({
-        message: "Issue not found",
+      if (!issue) {
+        return res.status(404).json({
+          message: "Issue not found",
+        });
+      }
+
+      const comment = await Comment.create({
+        content: content.trim(),
+        issue: issueId,
+        task: taskId || null,
+        createdBy: req.user.userId,
+      });
+
+      /*
+       * Preserve existing issue activity behavior.
+       */
+      await createActivity({
+        issue: issueId,
+        project: issue.project,
+        user: req.user.userId,
+        action: "COMMENT_ADDED",
+        details: {
+          commentId: comment._id.toString(),
+        },
+      });
+
+      const populatedComment =
+        await Comment.findById(comment._id)
+          .populate("createdBy", "name email");
+
+      return res.status(201).json({
+        message: "Comment added successfully",
+        comment: populatedComment,
       });
     }
 
+    /*
+     * ----------------------------------------------
+     * TASK-LEVEL COMMENT
+     * ----------------------------------------------
+     */
+
     const comment = await Comment.create({
       content: content.trim(),
-      issue: issueId,
+      task: taskId,
       createdBy: req.user.userId,
     });
 
     await createActivity({
-  issue: issueId,
-  project: issue.project,
+  task: taskId,
+  project: req.project._id,
   user: req.user.userId,
   action: "COMMENT_ADDED",
   details: {
@@ -230,20 +271,26 @@ const createComment = async (req, res) => {
   },
 });
 
+    /*
+     * Task comments don't use Issue activity because
+     * there is no Issue associated with them.
+     *
+     * The comment itself is stored correctly against
+     * the embedded task.
+     */
+
     const populatedComment =
       await Comment.findById(comment._id)
-        .populate(
-          "createdBy",
-          "name email"
-        );
+        .populate("createdBy", "name email");
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Comment added successfully",
       comment: populatedComment,
     });
-
   } catch (error) {
-    res.status(500).json({
+    console.error("Create comment error:", error);
+
+    return res.status(500).json({
       message: "Failed to create comment",
       error: error.message,
     });
@@ -251,7 +298,12 @@ const createComment = async (req, res) => {
 };
 
 
-// Update own comment
+/*
+ * ==================================================
+ * UPDATE COMMENT
+ * ==================================================
+ */
+
 const updateComment = async (req, res) => {
   try {
     const { content } = req.body;
@@ -268,30 +320,36 @@ const updateComment = async (req, res) => {
 
     await comment.save();
 
-    await createActivity({
-  issue: comment.issue,
-  project: req.comment.project,
+    /*
+     * Only create existing issue activity when
+     * the comment actually belongs to an issue.
+     */
+    if (comment.issue) {
+     await createActivity({
+  issue: comment.issue || null,
+  task: comment.task || null,
+  project: req.project._id,
   user: req.user.userId,
   action: "COMMENT_UPDATED",
   details: {
     commentId: comment._id.toString(),
   },
 });
+    }
 
     const populatedComment =
       await Comment.findById(comment._id)
-        .populate(
-          "createdBy",
-          "name email"
-        );
+        .populate("createdBy", "name email");
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Comment updated successfully",
       comment: populatedComment,
     });
 
   } catch (error) {
-    res.status(500).json({
+    console.error("Update comment error:", error);
+
+    return res.status(500).json({
       message: "Failed to update comment",
       error: error.message,
     });
@@ -299,21 +357,36 @@ const updateComment = async (req, res) => {
 };
 
 
-// Delete own comment
+/*
+ * ==================================================
+ * DELETE COMMENT
+ * ==================================================
+ */
+
 const deleteComment = async (req, res) => {
   try {
     const comment = req.comment;
 
-    await Comment.findByIdAndDelete(
-      comment._id
-    );
+    await Comment.findByIdAndDelete(comment._id);
 
-    res.status(200).json({
+    await createActivity({
+  issue: comment.issue || null,
+  task: comment.task || null,
+  project: req.project._id,
+  user: req.user.userId,
+  action: "COMMENT_DELETED",
+  details: {
+    commentId: comment._id.toString(),
+  },
+});
+
+    return res.status(200).json({
       message: "Comment deleted successfully",
     });
-
   } catch (error) {
-    res.status(500).json({
+    console.error("Delete comment error:", error);
+
+    return res.status(500).json({
       message: "Failed to delete comment",
       error: error.message,
     });
