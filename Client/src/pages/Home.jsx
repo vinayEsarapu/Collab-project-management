@@ -21,7 +21,7 @@ function Home() {
               to="/login"
               className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors duration-200 hover:bg-white/5 hover:text-white sm:px-4"
             >
-              Login
+              Sign In
             </NavLink>
 
             <NavLink

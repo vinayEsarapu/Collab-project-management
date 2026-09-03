@@ -252,29 +252,7 @@ function ProjectCard({ project, onView }) {
           {project.title}
         </h2>
 
-        <p className="mt-2 line-clamp-2 min-h-12 text-sm leading-6 text-slate-400">
-          {project.description}
-        </p>
-
-        {/* Technologies */}
-        <div className="mt-5 flex min-h-7 flex-wrap gap-2">
-          {project.technologies?.slice(0, 3).map(
-            (technology) => (
-              <span
-                key={technology}
-                className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-400"
-              >
-                {technology}
-              </span>
-            )
-          )}
-
-          {project.technologies?.length > 3 && (
-            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-500">
-              +{project.technologies.length - 3}
-            </span>
-          )}
-        </div>
+      
 
         {/* Footer */}
         <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">

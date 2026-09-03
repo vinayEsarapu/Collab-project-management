@@ -69,9 +69,7 @@ function Login() {
         <div className="w-full max-w-md">
           {/* Heading */}
           <div className="mb-8 text-center">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg font-bold text-white">
-              CP
-            </div>
+            
 
             <h1 className="text-3xl font-bold tracking-tight text-white">
               Welcome back
@@ -164,7 +162,7 @@ function Login() {
           </div>
 
           {/* Back to home */}
-          <div className="mt-6 text-center">
+          <div className="absolute top-20 left-10">
             <NavLink
               to="/"
               className="text-sm text-slate-500 transition-colors duration-200 hover:text-slate-300"

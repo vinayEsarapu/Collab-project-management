@@ -6,7 +6,7 @@ import {
   createIssue,
   getIssuesByProject,
 } from "../services/issueservices";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { getProjectById } from "../services/projectservices";
 //import projectService from "../services/projectservices";
 
@@ -120,6 +120,14 @@ function Issues() {
         {/* Header */}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
+
+            <Link
+              to={`/projects/${projectId}`}
+             className="mb-6 inline-flex items-center text-sm text-slate-400 transition hover:text-white"
+            >
+            ← Back to Current Project
+           </Link>
+
             <p className="text-sm font-medium text-indigo-400">
               Project Issues
             </p>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState , useEffect } from "react";
 import { useMemo } from "react";
 
 function IssueForm({ project , projectId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
@@ -10,6 +10,22 @@ function IssueForm({ project , projectId, members = [],  issue = null,   canAssi
   labels: issue?.labels || [],
   assignedTo: issue?.assignedTo?._id || issue?.assignedTo || "",
   });
+
+  useEffect(() => {
+  if (!issue) return;
+
+  setFormData({
+    title: issue.title || "",
+    description: issue.description || "",
+    status: issue.status || "Open",
+    priority: issue.priority || "Medium",
+    labels: issue.labels || [],
+    assignedTo:
+      issue.assignedTo?._id ||
+      issue.assignedTo ||
+      "",
+  });
+}, [issue]);
 
   const [labelInput, setLabelInput] = useState("");
   const [error, setError] = useState("");

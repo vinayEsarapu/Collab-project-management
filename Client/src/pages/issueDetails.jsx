@@ -9,6 +9,7 @@ import {
    getTaskIssueById,
 } from "../services/issueservices";
 import {getProjectById} from "../services/projectservices";
+import { createComment } from "../services/commentService";
 
 
 function IssueDetails() {
@@ -23,6 +24,8 @@ function IssueDetails() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [project, setProject] = useState(null);
+  const [commentText, setCommentText] = useState("");
+const [postingComment, setPostingComment] = useState(false);
 
   const issueCommentsPath = taskId
   ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/comments`
@@ -32,6 +35,9 @@ const issueActivityPath = taskId
   ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/activity`
   : `/projects/${projectId}/issues/${issueId}/activity`;
   
+  const backToIssuesPath = taskId
+  ? `/projects/${projectId}/tasks/${taskId}/issues`
+  : `/projects/${projectId}/issues`;
 
 
   const isOwner =
@@ -52,6 +58,9 @@ const isAssignee =
 const canEdit =
   Boolean(isOwner || isCreator || isAssignee);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+  useState(false);
+
   const fetchProject = async () => {
   try {
     const data = await getProjectById(projectId);
@@ -59,6 +68,36 @@ const canEdit =
     setProject(data);
   } catch (error) {
     console.error("Failed to load project:", error);
+  }
+};
+
+const handlePostComment = async (event) => {
+  event.preventDefault();
+
+  const content = commentText.trim();
+
+  if (!content) {
+    return;
+  }
+
+  try {
+    setPostingComment(true);
+    setError("");
+
+    await createComment(
+      issueId,
+      content,
+      taskId || null
+    );
+
+    setCommentText("");
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Failed to post comment."
+    );
+  } finally {
+    setPostingComment(false);
   }
 };
 
@@ -92,33 +131,25 @@ const handleUpdateIssue = async (issueData) => {
 };
 
 const handleDeleteIssue = async () => {
-  const confirmed = window.confirm(
-    "Are you sure you want to delete this issue?"
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
   try {
     setDeleting(true);
     setError("");
 
     if (taskId) {
-  await api.delete(
-    `/issues/task/${taskId}/${issueId}`
-  );
+      await api.delete(
+        `/issues/task/${taskId}/${issueId}`
+      );
 
-  navigate(
-    `/projects/${projectId}/tasks/${taskId}/issues`
-  );
-} else {
-  await deleteIssue(issueId);
+      navigate(
+        `/projects/${projectId}/tasks/${taskId}/issues`
+      );
+    } else {
+      await deleteIssue(issueId);
 
-  navigate(
-    `/projects/${projectId}/issues`
-  );
-}
+      navigate(
+        `/projects/${projectId}/issues`
+      );
+    }
   } catch (error) {
     setError(
       error.response?.data?.message ||
@@ -126,28 +157,26 @@ const handleDeleteIssue = async () => {
     );
   } finally {
     setDeleting(false);
+    setShowDeleteConfirm(false);
   }
 };
 
-  const fetchIssue = async () => {
+  
+const fetchIssue = async () => {
   try {
     setLoading(true);
     setError("");
 
-    let response;
+    let data;
 
     if (taskId) {
-      response = await getTaskIssueById(
-        taskId,
-        issueId
-      );
+      data = await getTaskIssueById(taskId, issueId);
     } else {
-      response = await api.get(
-        `/issues/${issueId}`
-      );
+      const response = await api.get(`/issues/${issueId}`);
+      data = response.data;
     }
 
-    setIssue(response.issue || response);
+    setIssue(data.issue || data);
   } catch (error) {
     setError(
       error.response?.data?.message ||
@@ -220,11 +249,11 @@ const handleDeleteIssue = async () => {
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
         <div className="mx-auto max-w-5xl">
           <Link
-           to={`/projects/${projectId}`}
-           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
-          >
-           ← Back to Project
-         </Link>
+            to={backToIssuesPath}
+            className="mb-6 inline-flex items-center text-sm text-slate-400 transition hover:text-white"
+              >
+          ← Back to Issues
+        </Link>
 
           <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6">
             <h2 className="text-lg font-semibold text-red-300">
@@ -279,12 +308,12 @@ const handleDeleteIssue = async () => {
         <Link
           to={
   taskId
-    ? `/projects/${projectId}/tasks/${taskId}`
-    : `/projects/${projectId}`
+    ? `/projects/${projectId}/tasks/${taskId}/issues`
+    : `/projects/${projectId}/issues`
 }v
           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
          >
-           ← Back to Project
+           ← Back to Issues
        </Link>
 
         {/* Header */}
@@ -300,9 +329,7 @@ const handleDeleteIssue = async () => {
                 {issue.title}
               </h1>
 
-              <p className="mt-2 text-sm text-slate-500">
-                #{issue._id}
-              </p>
+             
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -441,29 +468,46 @@ const handleDeleteIssue = async () => {
 
        {/* Comments */}
 
-<section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-6">
+<section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
+  <div>
+    <h2 className="text-lg font-semibold text-white">
+      Post Comments
+    </h2>
 
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-    <div>
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Comments
-      </h2>
-
-      <p className="mt-1 text-xs text-slate-500">
-        View and discuss comments on this issue.
-      </p>
-    </div>
-
-    <Link
-      to={`/projects/${projectId}/issues/${issueId}/comments`}
-      className="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-400"
-    >
-      View Comments →
-    </Link>
-
+    <p className="mt-1 text-sm text-slate-400">
+      Add a comment to this issue.
+    </p>
   </div>
 
+  <form
+    onSubmit={handlePostComment}
+    className="mt-5"
+  >
+    <textarea
+      value={commentText}
+      onChange={(e) =>
+        setCommentText(e.target.value)
+      }
+      placeholder="Write a comment..."
+      rows={4}
+      className="w-full resize-none rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-white/20"
+    />
+
+    <div className="mt-3 flex justify-end">
+      <button
+        type="submit"
+        disabled={
+          postingComment ||
+          !commentText.trim()
+        }
+        className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {postingComment
+          ? "Posting..."
+          : "Post Comment"}
+      </button>
+    </div>
+  </form>
 </section>
 
         {/* Actions */}
@@ -503,7 +547,7 @@ const handleDeleteIssue = async () => {
 </button>
           {isOwner && (
           <button
-            onClick={handleDeleteIssue}
+            onClick={()=>setShowDeleteConfirm(true)}
             disabled={deleting}
             className="rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -529,6 +573,43 @@ const handleDeleteIssue = async () => {
         onSubmit={handleUpdateIssue}
         onClose={() => setShowEditForm(false)}
       />
+)}
+
+{showDeleteConfirm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+      <h2 className="text-lg font-semibold text-white">
+        Delete Issue?
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-slate-400">
+        Are you sure you want to delete this issue?
+        This action cannot be undone.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            setShowDeleteConfirm(false)
+          }
+          disabled={deleting}
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDeleteIssue}
+          disabled={deleting}
+          className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleting ? "Deleting..." : "Delete Issue"}
+        </button>
+      </div>
+    </div>
+  </div>
 )}
 </div>
   );
