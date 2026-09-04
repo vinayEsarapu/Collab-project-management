@@ -134,23 +134,57 @@ const authorizeIssueCreation = async (req, res, next) => {
     }
 
     const requestedAssignee = req.body.assignedTo || null;
+const requestedReferral = req.body.referredTo || null;
 
+
+// Actual assignment is owner-only.
 if (requestedAssignee && !isOwner) {
   return res.status(403).json({
     message: "Only the project owner can assign issues",
   });
 }
 
+// Validate actual assignee.
 if (requestedAssignee) {
   const isProjectMember = project.members.some(
     (member) =>
       member.toString() === requestedAssignee.toString()
   );
 
-  if (!isProjectMember) {
+  const isOwnerAssignee =
+    project.owner.toString() === requestedAssignee.toString();
+
+  if (!isProjectMember && !isOwnerAssignee) {
     return res.status(403).json({
-      message:
-        "Issue can only be assigned to a member of this project",
+      message: "Issue can only be assigned to a member of this project",
+    });
+  }
+}
+
+// Referral is allowed for project members.
+// It does NOT grant assignment authority.
+if (requestedReferral) {
+  const isReferralOwner =
+    project.owner.toString() === requestedReferral.toString();
+
+  const isReferralMember = project.members.some(
+    (member) =>
+      member.toString() === requestedReferral.toString()
+  );
+
+  if (!isReferralOwner && !isReferralMember) {
+    return res.status(403).json({
+      message: "Issue can only be referred to a member of this project",
+    });
+  }
+
+  // Don't allow referring the issue back to the creator.
+  if (
+    requestedReferral.toString() ===
+    req.user.userId.toString()
+  ) {
+    return res.status(400).json({
+      message: "You cannot refer an issue to yourself",
     });
   }
 }

@@ -1,14 +1,25 @@
 import { useState , useEffect } from "react";
 import { useMemo } from "react";
+import { useAuth } from "../../context/Authcontext.jsx";
 
 function IssueForm({ project , projectId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
+  const { user } = useAuth();
+  const currentUserId = user?._id || user?.id;
   const [formData, setFormData] = useState({
   title: issue?.title || "",
   description: issue?.description || "",
   status: issue?.status || "Open",
   priority: issue?.priority || "Medium",
   labels: issue?.labels || [],
-  assignedTo: issue?.assignedTo?._id || issue?.assignedTo || "",
+  assignedTo:
+  issue?.assignedTo?._id ||
+  issue?.assignedTo ||
+  "",
+
+referredTo:
+  issue?.referredTo?._id ||
+  issue?.referredTo ||
+  "",
   });
 
   useEffect(() => {
@@ -20,9 +31,15 @@ function IssueForm({ project , projectId, members = [],  issue = null,   canAssi
     status: issue.status || "Open",
     priority: issue.priority || "Medium",
     labels: issue.labels || [],
+
     assignedTo:
       issue.assignedTo?._id ||
       issue.assignedTo ||
+      "",
+
+    referredTo:
+      issue.referredTo?._id ||
+      issue.referredTo ||
       "",
   });
 }, [issue]);
@@ -32,26 +49,29 @@ function IssueForm({ project , projectId, members = [],  issue = null,   canAssi
   const [submitting, setSubmitting] = useState(false);
 
   const projectMembers = useMemo(() => {
-  if (!project) return [];
+  const projectUsers = members?.length
+    ? members
+    : project?.members || [];
 
-  const members = project.members || [];
-
-  const owner = project.owner;
+  const owner = project?.owner;
 
   const users = owner
-    ? [owner, ...members]
-    : members;
+    ? [owner, ...projectUsers]
+    : projectUsers;
 
-  const uniqueUsers = users.filter(
-    (user, index, self) =>
+  return users.filter((user, index, self) => {
+    const userId = user?._id?.toString();
+
+    if (!userId) return false;
+
+    return (
       index ===
       self.findIndex(
-        (item) => item._id === user._id
+        (item) => item?._id?.toString() === userId
       )
-  );
-
-  return uniqueUsers;
-}, [project]);
+    );
+  });
+}, [members, project]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -106,15 +126,22 @@ function IssueForm({ project , projectId, members = [],  issue = null,   canAssi
 
     try {
       setSubmitting(true);
-      await onSubmit({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        status: formData.status,
-        priority: formData.priority,
-        labels: formData.labels,
-        project: projectId,
-        assignedTo: formData.assignedTo || null,
-      });
+      const payload = {
+  title: formData.title.trim(),
+  description: formData.description.trim(),
+  status: formData.status,
+  priority: formData.priority,
+  labels: formData.labels,
+  project: projectId,
+  referredTo: formData.referredTo || null,
+};
+
+// Only owner-controlled UI sends actual assignment.
+if (canAssign) {
+  payload.assignedTo = formData.assignedTo || null;
+}
+
+await onSubmit(payload);
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -238,30 +265,81 @@ function IssueForm({ project , projectId, members = [],  issue = null,   canAssi
           </div>
 
           {/* Assignee */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">
-              Assignee
-            </label>
-            {canAssign && (
-            <select
-              name="assignedTo"
-              value={formData.assignedTo}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-            >
-              <option value="">Unassigned</option>
+          {/* Refer To */}
+{!issue && (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-300">
+      Refer To
+    </label>
 
-              {projectMembers.map((member) => (
-                <option
-                  key={member._id}
-                  value={member._id}
-                >
-                  {member.name || member.email}
-                </option>
-              ))}
-            </select>
-            )}
-          </div>
+    <select
+      name="referredTo"
+      value={formData.referredTo}
+      onChange={handleChange}
+      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+    >
+      <option value="">
+        No referral
+      </option>
+
+       {projectMembers
+  .filter((member) => {
+    const memberId = member?._id?.toString();
+
+    return (
+      memberId &&
+      memberId !== currentUserId?.toString()
+    );
+  })
+  .map((member) => (
+    <option
+      key={member._id}
+      value={member._id}
+    >
+      {member.name || member.email}
+    </option>
+  ))}
+    </select>
+
+    <p className="mt-2 text-xs text-slate-500">
+      Referencing someone does not assign the issue to them.
+      Only the project owner can assign the issue.
+    </p>
+  </div>
+)}
+
+{/* Actual Assignment */}
+{canAssign && (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-300">
+      Assign To
+    </label>
+
+    <select
+      name="assignedTo"
+      value={formData.assignedTo}
+      onChange={handleChange}
+      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+    >
+      <option value="">
+        Unassigned
+      </option>
+
+      {projectMembers.map((member) => (
+        <option
+          key={member._id}
+          value={member._id}
+        >
+          {member.name || member.email}
+        </option>
+      ))}
+    </select>
+
+    <p className="mt-2 text-xs text-slate-500">
+      Only the project owner can assign or reassign an issue.
+    </p>
+  </div>
+)}
 
           {/* Labels */}
           <div>

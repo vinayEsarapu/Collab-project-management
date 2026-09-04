@@ -87,13 +87,17 @@ function TaskIssues() {
       setError("");
 
       await createIssue({
-        ...issueData,
+  ...issueData,
+  project: projectId,
+  task: taskId,
 
-        // Explicitly bind the issue to
-        // this project and this task.
-        project: projectId,
-        task: taskId,
-      });
+  // Task issue defaults to task assignee.
+  assignedTo:
+    issueData.assignedTo ||
+    task?.assignedTo?._id ||
+    task?.assignedTo ||
+    null,
+});
 
       setShowForm(false);
 
@@ -315,14 +319,15 @@ function TaskIssues() {
       </div>
 
       {showForm && (
-        <IssueForm
-          projectId={projectId}
-          project={project}
-          canAssign={isProjectOwner}
-          members={project?.members || []}
-          onSubmit={handleCreateIssue}
-          onClose={() => setShowForm(false)}
-        />
+       <IssueForm
+  projectId={projectId}
+  project={project}
+  canAssign={isProjectOwner}
+  members={project?.members || []}
+  currentUserId={user?._id}
+  onSubmit={handleCreateIssue}
+  onClose={() => setShowForm(false)}
+/>
       )}
     </div>
   );

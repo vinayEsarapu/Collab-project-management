@@ -53,7 +53,19 @@ const issueSchema = new mongoose.Schema(
       required: true,
     },
 
+
+
+    // ACTUAL ASSIGNEE
+    // Only project owner has authority to assign/reassign.
     assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+     // PROJECT-LEVEL REFERRAL
+    // This does NOT mean assignment.
+    referredTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,

@@ -401,22 +401,31 @@ const fetchIssue = async () => {
               </div>
 
               {/* Assignee */}
-              <div>
-                <p className="text-xs text-slate-500">
-                  Assigned To
-                </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <p className="text-xs text-slate-500">
+      Referred To
+    </p>
 
-                <p className="mt-1 text-sm font-medium text-white">
-                  {issue.assignedTo?.name ||
-                    "Unassigned"}
-                </p>
+    <p className="mt-1 text-sm font-medium text-white">
+      {issue.referredTo
+        ? issue.referredTo.name || issue.referredTo.email
+        : "No referral"}
+    </p>
+  </div>
 
-                {issue.assignedTo?.email && (
-                  <p className="mt-1 text-xs text-slate-500">
-                    {issue.assignedTo.email}
-                  </p>
-                )}
-              </div>
+  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <p className="text-xs text-slate-500">
+      Assigned To
+    </p>
+
+    <p className="mt-1 text-sm font-medium text-white">
+      {issue.assignedTo
+        ? issue.assignedTo.name || issue.assignedTo.email
+        : "Unassigned"}
+    </p>
+  </div>
+</div>
 
               {/* Created By */}
               <div>

@@ -15,9 +15,9 @@ const createIssue = async (req, res) => {
       project,
       task,
       assignedTo,
+      referredTo,
     } = req.body;
 
-    // Validate project first
     const projectDoc = await Project.findById(project);
 
     if (!projectDoc) {
@@ -26,8 +26,6 @@ const createIssue = async (req, res) => {
       });
     }
 
-    // If this is a task-level issue, verify that
-    // the task actually belongs to this project.
     let taskData = null;
 
     if (task) {
@@ -40,7 +38,6 @@ const createIssue = async (req, res) => {
       }
     }
 
-    // Create issue only AFTER project/task validation
     const issue = await Issue.create({
       title,
       description,
@@ -50,23 +47,29 @@ const createIssue = async (req, res) => {
       project,
       task: task || null,
       createdBy: req.user.userId,
+
+      // Actual assignment
       assignedTo: assignedTo || null,
+
+      // Referral
+      referredTo: referredTo || null,
     });
 
-   await createActivity({
-  issue: issue._id,
-  task: issue.task || null,
-  project: issue.project,
-  user: req.user.userId,
-  action: "ISSUE_CREATED",
-});
+    await createActivity({
+      issue: issue._id,
+      task: issue.task || null,
+      project: issue.project,
+      user: req.user.userId,
+      action: "ISSUE_CREATED",
+    });
+
     if (assignedTo) {
       await createActivity({
-  issue: issue._id,
-  task: issue.task || null,
-  project: issue.project,
-  user: req.user.userId,
-  action: "ISSUE_ASSIGNED",
+        issue: issue._id,
+        task: issue.task || null,
+        project: issue.project,
+        user: req.user.userId,
+        action: "ISSUE_ASSIGNED",
         details: {
           assignedTo: assignedTo.toString(),
         },
@@ -76,7 +79,8 @@ const createIssue = async (req, res) => {
     const populatedIssue = await Issue.findById(issue._id)
       .populate("project", "name title description")
       .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
+      .populate("assignedTo", "name email")
+      .populate("referredTo", "name email");
 
     res.status(201).json({
       message: "Issue created successfully",
@@ -99,7 +103,7 @@ const getIssuesByTask = async (req, res, next) => {
       "tasks._id": taskId,
     })
       .populate("owner", "name email")
-      .populate("members", "name email");
+      .populate("members", "name email")
 
     if (!project) {
       return res.status(404).json({
@@ -136,6 +140,7 @@ const getIssuesByTask = async (req, res, next) => {
     })
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
+      .populate("referredTo", "name email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -170,6 +175,7 @@ const getIssues = async (req, res) => {
       .populate("project", "name description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
+      .populate("referredTo", "name email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -191,7 +197,8 @@ const getIssueById = async (req, res) => {
     const issue = await Issue.findById(req.params.id)
       .populate("project", "title description")
       .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
+      .populate("assignedTo", "name email")
+      .populate("referredTo", "name email");
 
     if (!issue) {
       return res.status(404).json({
@@ -284,7 +291,43 @@ const updateIssue = async (req, res) => {
         ? assignedTo || null
         : issue.assignedTo;
 
+   const oldReferredTo = issue.referredTo
+  ? issue.referredTo.toString()
+  : null;
+
+const newReferredTo =
+  referredTo !== undefined
+    ? referredTo || null
+    : oldReferredTo;
+
+const normalizedNewReferredTo = newReferredTo
+  ? newReferredTo.toString()
+  : null;
+
+const referralChanged =
+  referredTo !== undefined &&
+  normalizedNewReferredTo !== oldReferredTo;
+
+issue.referredTo =
+  referredTo !== undefined
+    ? referredTo || null
+    : issue.referredTo;     
+
     await issue.save();
+
+    if (referralChanged) {
+  await createActivity({
+    issue: issue._id,
+    project: issue.project,
+    task: issue.task || null,
+    user: req.user.userId,
+    action: "ISSUE_UPDATED",
+    details: {
+      referredTo: normalizedNewReferredTo,
+      referralChanged: true,
+    },
+  });
+}
     /*
      * Create activity records
      */
@@ -380,7 +423,8 @@ const updateIssue = async (req, res) => {
     const updatedIssue = await Issue.findById(issue._id)
       .populate("project", "name description")
       .populate("createdBy", "name email")
-      .populate("assignedTo", "name email");
+      .populate("assignedTo", "name email")
+       .populate("referredTo", "name email");;
 
     res.status(200).json({
       message: "Issue updated successfully",
