@@ -13,6 +13,7 @@ function Register() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -134,26 +135,38 @@ function Register() {
               </div>
 
               {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Password
-                </label>
+             {/* Password */}
+<div>
+  <label
+    htmlFor="password"
+    className="mb-2 block text-sm font-medium text-slate-200"
+  >
+    Password
+  </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  autoComplete="new-password"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-white/30 focus:ring-2 focus:ring-white/10"
-                />
-              </div>
+  <div className="relative">
+    <input
+      id="password"
+      type={showPassword ? "text" : "password"}
+      name="password"
+      value={formData.password}
+      onChange={handleChange}
+      placeholder="Create a password"
+      autoComplete="new-password"
+      required
+      className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 pr-12 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-white/30 focus:ring-2 focus:ring-white/10"
+    />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword((prev) => !prev)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition-colors duration-200 hover:text-slate-200"
+      aria-label={showPassword ? "Hide password" : "Show password"}
+    >
+      {showPassword ? "🙈" : "👁️"}
+    </button>
+  </div>
+</div>
 
               {/* Submit */}
               <button
