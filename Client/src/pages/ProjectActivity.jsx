@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getProjectActivity, getProjectById } from "../services/projectservices";
+import { getProjectActivity, getProjectById ,  deleteProjectActivity} from "../services/projectservices";
 
 function ProjectActivity() {
   const { id } = useParams();
@@ -23,6 +23,7 @@ function ProjectActivity() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
   const [error, setError] = useState("");
   const [activityError, setActivityError] = useState("");
+  const [deletingActivityId, setDeletingActivityId] = useState(null);
 
   const loadProject = async () => {
     try {
@@ -104,6 +105,51 @@ function ProjectActivity() {
 
     loadActivity(1, "");
   };
+
+  const handleDeleteActivity = async (activityId) => {
+  const confirmed = window.confirm(
+    "Delete this activity log? This action cannot be undone."
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setDeletingActivityId(activityId);
+    setActivityError("");
+
+    await deleteProjectActivity(id, activityId);
+
+    setActivities((currentActivities) =>
+      currentActivities.filter(
+        (activity) => activity._id !== activityId
+      )
+    );
+
+    setActivityPagination((current) => ({
+      ...current,
+      total: Math.max(current.total - 1, 0),
+      totalPages:
+        Math.max(
+          Math.ceil(Math.max(current.total - 1, 0) / current.limit),
+          0
+        ),
+    }));
+  } catch (error) {
+    console.error(
+      "Failed to delete activity:",
+      error
+    );
+
+    setActivityError(
+      error.response?.data?.message ||
+        "Failed to delete activity log."
+    );
+  } finally {
+    setDeletingActivityId(null);
+  }
+};
 
   if (isLoading) {
     return (
@@ -268,12 +314,16 @@ function ProjectActivity() {
           ) : activities.length > 0 ? (
             <>
               <div className="mt-6 space-y-3">
-                {activities.map((activity) => (
-                  <ActivityCard
-                    key={activity._id}
-                    activity={activity}
-                  />
-                ))}
+               {activities.map((activity) => (
+  <ActivityCard
+    key={activity._id}
+    activity={activity}
+    onDelete={handleDeleteActivity}
+    isDeleting={
+      deletingActivityId === activity._id
+    }
+  />
+))}
               </div>
 
               {/* Pagination */}
@@ -338,7 +388,11 @@ function ProjectActivity() {
   );
 }
 
-function ActivityCard({ activity }) {
+function ActivityCard({
+  activity,
+  onDelete,
+  isDeleting,
+}) {
   const userName =
     activity.user?.name ||
     activity.user?.userCode ||
@@ -360,14 +414,27 @@ function ActivityCard({ activity }) {
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-slate-200">
-            {userName}
-          </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-200">
+              {userName}
+            </p>
 
-          <span className="text-xs text-slate-500">
-            {createdAt}
-          </span>
+            <span className="text-xs text-slate-500">
+              {createdAt}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onDelete(activity._id)}
+            disabled={isDeleting}
+            className="w-fit rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDeleting
+              ? "Deleting..."
+              : "Delete"}
+          </button>
         </div>
 
         <p className="mt-2 text-sm leading-5 text-slate-400">

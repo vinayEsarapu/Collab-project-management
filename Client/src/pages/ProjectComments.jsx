@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
 import {
   getProjectComments,
+  getProjectById,
   createProjectComment,
   updateProjectComment,
   deleteProjectComment,
@@ -17,6 +18,10 @@ function ProjectComments() {
   const [error, setError] = useState("");
 
   const [page, setPage] = useState(1);
+  const [commenterId, setCommenterId] = useState("");
+const [commenterName, setCommenterName] = useState("");
+const [commenters, setCommenters] = useState([]);
+const [commentersLoading, setCommentersLoading] = useState(false);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -82,6 +87,51 @@ function ProjectComments() {
     return created.toLocaleDateString();
   };
 
+
+  const fetchCommenters = async () => {
+  if (!projectId) {
+    return;
+  }
+
+  try {
+    setCommentersLoading(true);
+
+    const project = await getProjectById(projectId);
+
+    const users = [];
+
+    if (project?.owner?._id) {
+      users.push(project.owner);
+    }
+
+    if (Array.isArray(project?.members)) {
+      users.push(...project.members);
+    }
+
+    const uniqueUsers = Array.from(
+      new Map(
+        users.map((member) => [
+          member._id.toString(),
+          member,
+        ])
+      ).values()
+    );
+
+    uniqueUsers.sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "")
+    );
+
+    setCommenters(uniqueUsers);
+  } catch (error) {
+    console.error(
+      "Failed to load project commenters:",
+      error
+    );
+  } finally {
+    setCommentersLoading(false);
+  }
+};
+
   const fetchComments = async () => {
     try {
       setLoading(true);
@@ -90,7 +140,8 @@ function ProjectComments() {
       const data = await getProjectComments(
         projectId,
         page,
-        10
+        10,
+         commenterId
       );
 
       setComments(data.comments || []);
@@ -120,11 +171,17 @@ function ProjectComments() {
     }
   };
 
-  useEffect(() => {
-    if (projectId) {
-      fetchComments();
-    }
-  }, [projectId, page]);
+ useEffect(() => {
+  if (projectId) {
+    fetchCommenters();
+  }
+}, [projectId]);
+
+useEffect(() => {
+  if (projectId) {
+    fetchComments();
+  }
+}, [projectId, page, commenterId]);
 
   const handleAddComment = async (event) => {
     event.preventDefault();
@@ -283,6 +340,77 @@ function ProjectComments() {
             View and discuss comments with your project team.
           </p>
         </div>
+
+        {/* Filter */}
+<section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+
+    <div className="flex-1">
+      <label
+        htmlFor="project-commenter-filter"
+        className="text-xs font-medium uppercase tracking-wide text-slate-500"
+      >
+        Filter by commenter
+      </label>
+
+      <select
+        id="project-commenter-filter"
+        value={commenterId}
+        onChange={(event) => {
+          const selectedId =
+            event.target.value;
+
+          setCommenterId(selectedId);
+
+          const selectedUser =
+            commenters.find(
+              (member) =>
+                member._id?.toString() ===
+                selectedId
+            );
+
+          setCommenterName(
+            selectedUser?.name || ""
+          );
+
+          setPage(1);
+        }}
+        disabled={commentersLoading}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <option value="">
+          {commentersLoading
+            ? "Loading commenters..."
+            : "All commenters"}
+        </option>
+
+        {commenters.map((member) => (
+          <option
+            key={member._id}
+            value={member._id}
+          >
+            {member.name || "Unknown User"}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {commenterId && (
+      <button
+        type="button"
+        onClick={() => {
+          setCommenterId("");
+          setCommenterName("");
+          setPage(1);
+        }}
+        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      >
+        Clear Filter
+      </button>
+    )}
+
+  </div>
+</section>
 
         {/* Error */}
         {error && (

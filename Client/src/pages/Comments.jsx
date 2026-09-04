@@ -7,6 +7,7 @@ import {
   updateComment,
   deleteComment,
 } from "../services/commentService";
+import { getProjectById } from "../services/projectservices";
 
 function Comments() {
   const { id: projectId,   taskId,issueId } = useParams();
@@ -20,6 +21,9 @@ function Comments() {
 
   // Name filter
   const [name, setName] = useState("");
+  const [commenterId, setCommenterId] = useState("");
+const [commenters, setCommenters] = useState([]);
+const [commentersLoading, setCommentersLoading] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -104,6 +108,55 @@ function Comments() {
     return created.toLocaleDateString();
   };
 
+
+  const fetchCommenters = async () => {
+  if (!projectId) {
+    return;
+  }
+
+  try {
+    setCommentersLoading(true);
+
+    const project = await getProjectById(projectId);
+
+    const users = [];
+
+    // Project owner
+    if (project?.owner?._id) {
+      users.push(project.owner);
+    }
+
+    // Project members
+    if (Array.isArray(project?.members)) {
+      users.push(...project.members);
+    }
+
+    // Remove duplicates
+    const uniqueUsers = Array.from(
+      new Map(
+        users.map((member) => [
+          member._id.toString(),
+          member,
+        ])
+      ).values()
+    );
+
+    // Sort alphabetically
+    uniqueUsers.sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "")
+    );
+
+    setCommenters(uniqueUsers);
+  } catch (error) {
+    console.error(
+      "Failed to load project commenters:",
+      error
+    );
+  } finally {
+    setCommentersLoading(false);
+  }
+};
+
   // --------------------------------------------------
   // Fetch comments
   // --------------------------------------------------
@@ -118,7 +171,8 @@ function Comments() {
         page,
         10,
         name,
-         taskId
+         taskId,
+          commenterId
       );
 
       setComments(data.comments || []);
@@ -153,26 +207,47 @@ function Comments() {
   // --------------------------------------------------
 
   useEffect(() => {
-    if (taskId ||issueId) {
-      fetchComments();
-    }
-  }, [taskId, issueId, page, name]);
+  if (projectId) {
+    fetchCommenters();
+  }
+}, [projectId]);
 
+useEffect(() => {
+  if (taskId || issueId) {
+    fetchComments();
+  }
+}, [
+  taskId,
+  issueId,
+  page,
+  name,
+  commenterId,
+]);
   // --------------------------------------------------
   // Name filter
   // --------------------------------------------------
 
-  const handleNameChange = (event) => {
-    setName(event.target.value);
+  const handleCommenterChange = (event) => {
+  const selectedId = event.target.value;
 
-    // Always start from page 1 after changing filter
-    setPage(1);
-  };
+  setCommenterId(selectedId);
 
-  const clearNameFilter = () => {
-    setName("");
-    setPage(1);
-  };
+  const selectedUser = commenters.find(
+    (member) =>
+      member._id?.toString() === selectedId
+  );
+
+  setName(selectedUser?.name || "");
+
+  // Always start from page 1 after changing filter
+  setPage(1);
+};
+
+const clearCommenterFilter = () => {
+  setCommenterId("");
+  setName("");
+  setPage(1);
+};
 
   // --------------------------------------------------
   // Add comment
@@ -364,13 +439,54 @@ function Comments() {
                 Filter by commenter name
               </label>
 
-              <input
-                type="text"
-                value={name}
-                onChange={handleNameChange}
-                placeholder="Search by name..."
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-              />
+              {/* Filter */}
+<section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+
+    <div className="flex-1">
+      <label
+        htmlFor="commenter-filter"
+        className="text-xs font-medium uppercase tracking-wide text-slate-500"
+      >
+        Filter by commenter
+      </label>
+
+      <select
+        id="commenter-filter"
+        value={commenterId}
+        onChange={handleCommenterChange}
+        disabled={commentersLoading}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <option value="">
+          {commentersLoading
+            ? "Loading commenters..."
+            : "All commenters"}
+        </option>
+
+        {commenters.map((member) => (
+          <option
+            key={member._id}
+            value={member._id}
+          >
+            {member.name || "Unknown User"}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {commenterId && (
+      <button
+        type="button"
+        onClick={clearCommenterFilter}
+        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+      >
+        Clear Filter
+      </button>
+    )}
+
+  </div>
+</section>
             </div>
 
             {name && (
@@ -404,11 +520,11 @@ function Comments() {
                 : "comments"}
             </p>
 
-            {name && (
-              <p className="text-xs text-indigo-400">
-                Showing comments matching "{name}"
-              </p>
-            )}
+           {commenterId && name && (
+  <p className="text-xs text-indigo-400">
+    Showing comments by "{name}"
+  </p>
+)}
 
           </div>
         )}
@@ -424,15 +540,15 @@ function Comments() {
               </h3>
 
               <p className="mt-2 text-sm text-slate-500">
-                {name
-                  ? `No comments found for "${name}".`
-                  : "No comments have been added yet."}
+               {commenterId && name
+  ? `No comments found by "${name}".`
+  : "No comments have been added yet."}
               </p>
 
-              {name && (
+              {commenterId && (
                 <button
                   type="button"
-                  onClick={clearNameFilter}
+                  onClick={clearCommenterFilter}
                   className="mt-5 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
                 >
                   Clear Filter

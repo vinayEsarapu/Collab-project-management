@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getIssueActivities ,  getTaskActivities, } from "../services/activityService";
+import { getIssueActivities ,  getTaskActivities,  deleteActivity,} from "../services/activityService";
 
 function Activity() {
   const { id: projectId,  taskId, issueId } = useParams();
@@ -10,6 +10,8 @@ function Activity() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingActivityId, setDeletingActivityId] =
+  useState(null);
 
   const [selectedDate, setSelectedDate] = useState("");
 
@@ -83,6 +85,44 @@ function Activity() {
     setSelectedDate("");
     setPage(1);
   };
+
+  const handleDeleteActivity = async (activityId) => {
+  const confirmed = window.confirm(
+    "Delete this activity log? This action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setDeletingActivityId(activityId);
+    setError("");
+
+    await deleteActivity(activityId);
+
+    // Remove immediately from current page
+    setActivities((currentActivities) =>
+      currentActivities.filter(
+        (activity) => activity._id !== activityId
+      )
+    );
+
+    // Update displayed total
+    setPagination((current) => ({
+      ...current,
+      totalActivities: Math.max(
+        current.totalActivities - 1,
+        0
+      ),
+    }));
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Failed to delete activity."
+    );
+  } finally {
+    setDeletingActivityId(null);
+  }
+};
 
   const formatDate = (date) => {
     return new Date(date).toLocaleString([], {
@@ -311,11 +351,26 @@ case "TASK_PRIORITY_CHANGED":
                           {formatAction(activity)}
                         </p>
 
-                        <p className="shrink-0 text-xs text-slate-600">
-                          {formatDate(
-                            activity.createdAt
-                          )}
-                        </p>
+                        <div className="flex shrink-0 items-center gap-3">
+  <p className="text-xs text-slate-600">
+    {formatDate(activity.createdAt)}
+  </p>
+
+  <button
+    type="button"
+    onClick={() =>
+      handleDeleteActivity(activity._id)
+    }
+    disabled={
+      deletingActivityId === activity._id
+    }
+    className="rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    {deletingActivityId === activity._id
+      ? "Deleting..."
+      : "Delete"}
+  </button>
+</div>
                       </div>
                     </div>
 

@@ -133,12 +133,25 @@ export const getProjectActivity = async (
   return response.data;
 };
 
+// Delete project activity
+export const deleteProjectActivity = async (
+  projectId,
+  activityId
+) => {
+  const response = await api.delete(
+    `/projects/${projectId}/activity/${activityId}`
+  );
+
+  return response.data;
+};
+
 // PROJECT COMMENTS
 
 export const getProjectComments = async (
   projectId,
   page = 1,
-  limit = 10
+  limit = 10,
+  commenterId = ""
 ) => {
   const response = await api.get(
     `/projects/${projectId}/comments`,
@@ -146,6 +159,9 @@ export const getProjectComments = async (
       params: {
         page,
         limit,
+        ...(commenterId
+          ? { commenterId }
+          : {}),
       },
     }
   );

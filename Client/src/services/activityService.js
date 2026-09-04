@@ -49,3 +49,11 @@ export const getTaskActivities = async (
 
   return response.data;
 };
+
+export const deleteActivity = async (activityId) => {
+  const response = await api.delete(
+    `/activities/${activityId}`
+  );
+
+  return response.data;
+};

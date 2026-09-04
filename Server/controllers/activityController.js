@@ -217,8 +217,55 @@ const getTaskActivities = async (req, res) => {
   }
 };
 
+// DELETE ACTIVITY - PROJECT OWNER ONLY
+const deleteActivity = async (req, res) => {
+  try {
+    const { activityId } = req.params;
+
+    const activity = await Activity.findById(activityId);
+
+    if (!activity) {
+      return res.status(404).json({
+        message: "Activity not found",
+      });
+    }
+
+    const project = await Project.findById(activity.project);
+
+    if (!project) {
+      return res.status(404).json({
+        message: "Associated project not found",
+      });
+    }
+
+    const userId = req.user.userId.toString();
+
+    // Only project owner can delete audit logs
+    if (project.owner.toString() !== userId) {
+      return res.status(403).json({
+        message: "Only the project owner can delete activity logs",
+      });
+    }
+
+    await Activity.findByIdAndDelete(activityId);
+
+    return res.status(200).json({
+      message: "Activity deleted successfully",
+      activityId,
+    });
+  } catch (error) {
+    console.error("Delete activity error:", error);
+
+    return res.status(500).json({
+      message: "Failed to delete activity",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getIssueActivities,
   getTaskActivities,
+    deleteActivity,
 };
 

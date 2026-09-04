@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const ProjectComment = require("../models/ProjectComment");
 const ProjectActivity = require("../models/ProjectActivity");
 
@@ -22,10 +23,27 @@ const getProjectComments = async (req, res) => {
       50
     );
 
+    const commenterId =
+  (req.query.commenterId || "").trim();
+
+const filter = {
+  project: projectId,
+};
+
+if (commenterId) {
+  if (
+    !mongoose.Types.ObjectId.isValid(commenterId)
+  ) {
+    return res.status(400).json({
+      message: "Invalid commenter ID",
+    });
+  }
+
+  filter.createdBy = commenterId;
+}
+
     const totalComments =
-      await ProjectComment.countDocuments({
-        project: projectId,
-      });
+  await ProjectComment.countDocuments(filter);
 
     const totalPages =
       totalComments === 0
@@ -41,9 +59,7 @@ const getProjectComments = async (req, res) => {
       (currentPage - 1) * limit;
 
     const comments =
-      await ProjectComment.find({
-        project: projectId,
-      })
+  await ProjectComment.find(filter)
         .populate(
           "createdBy",
           "name userCode email"

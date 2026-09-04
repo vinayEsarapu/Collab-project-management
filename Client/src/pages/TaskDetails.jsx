@@ -566,70 +566,75 @@ function TaskDetails() {
             </div>
           </section>
         ) : (
+          <>
           /* Task Details */
-          <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+         {/* Task Details */}
 
-            <div>
-              <h2 className="text-lg font-semibold">
-                Task Details
-              </h2>
+<section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
 
-              <p className="mt-1 text-sm text-slate-400">
-                Information about this task.
-              </p>
-            </div>
+  <div>
+    <h2 className="text-lg font-semibold">
+      Task Details
+    </h2>
 
-            {/* Description */}
-            <div className="mt-6">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Description
-              </p>
+    <p className="mt-1 text-sm text-slate-400">
+      Information about this task.
+    </p>
+  </div>
 
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-                {task.description ||
-                  "No description"}
-              </p>
-            </div>
+  {/* Details */}
+  <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
-            {/* Details */}
-            <div className="mt-6 grid gap-4 border-t border-white/10 pt-6 sm:grid-cols-3">
+    <DetailItem
+      label="Assignee"
+      value={getAssigneeName()}
+    />
 
-              <DetailItem
-                label="Assignee"
-                value={getAssigneeName()}
-              />
+    <DetailItem
+      label="Status"
+      value={task.status || "Planning"}
+    />
 
-              <DetailItem
-                label="Status"
-                value={
-                  task.status || "Planning"
-                }
-              />
+    <DetailItem
+      label="Priority"
+      value={task.priority || "Medium"}
+    />
 
-              <DetailItem
-                label="Priority"
-                value={
-                  task.priority || "Medium"
-                }
-              />
-            </div>
+  </div>
 
-            {/* Permission */}
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-              <p className="text-xs text-slate-500">
-                Editing permission
-              </p>
+  {/* Permission */}
+  <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+    <p className="text-xs text-slate-500">
+      Editing permission
+    </p>
 
-              <p className="mt-1 text-sm text-slate-300">
-                {isOwner
-                  ? "You are the project owner and can edit this task."
-                  : isAssignedMember
-                  ? "You are assigned to this task and can edit it."
-                  : "You can view this task but cannot edit it."}
-              </p>
-            </div>
-          </section>
-        )}
+    <p className="mt-1 text-sm text-slate-300">
+      {isOwner
+        ? "You are the project owner and can edit this task."
+        : isAssignedMember
+        ? "You are assigned to this task and can edit it."
+        : "You can view this task but cannot edit it."}
+    </p>
+  </div>
+
+</section>
+    
+    
+
+{/* Description */}
+<section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+  <div>
+    <p className="text-xs uppercase tracking-wide text-slate-500">
+      Description
+    </p>
+
+    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+      {task.description || "No description"}
+    </p>
+  </div>
+
+</section>
 
         {/* Task Actions */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -730,7 +735,10 @@ function TaskDetails() {
           </button>
 
         </section>
+        </>
+        )}
       </main>
+      
     </div>
   );
 }

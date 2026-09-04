@@ -6,14 +6,19 @@ export const getComments = async (
   page = 1,
   limit = 10,
   name = "",
-  taskId = null
+  taskId = null,
+  commenterId = ""
 ) => {
   const params = new URLSearchParams();
 
   params.append("page", page);
   params.append("limit", limit);
 
-  if (name.trim()) {
+  // Prefer user ID because names may not be unique
+  if (commenterId?.trim()) {
+    params.append("commenterId", commenterId.trim());
+  } else if (name?.trim()) {
+    // Keep old name filtering compatible
     params.append("name", name.trim());
   }
 

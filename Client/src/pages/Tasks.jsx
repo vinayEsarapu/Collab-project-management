@@ -109,9 +109,11 @@ function Tasks() {
         newTask,
       ]);
 
-      resetTaskForm();
+     resetTaskForm();
 
-      setTaskSuccess("Task created successfully.");
+setIsAddingTask(false);
+
+setTaskSuccess("Task created successfully.");
     } catch (error) {
       console.error("Failed to create task:", error);
 
@@ -254,250 +256,286 @@ function Tasks() {
         </section>
 
         {/* Owner - Create Task */}
-        {isOwner && (
-          <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <div>
-              <h2 className="text-lg font-semibold">
-                Create Task
-              </h2>
+        {/* Owner - Create Task */}
+{isOwner && (
+  <section className="mt-6">
+    {!isAddingTask ? (
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setTaskError("");
+            setTaskSuccess("");
+            resetTaskForm();
+            setIsAddingTask(true);
+          }}
+          className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20"
+        >
+          + Create Task
+        </button>
+      </div>
+    ) : (
+      <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              Create Task
+            </h2>
 
-              <p className="mt-1 text-sm text-slate-400">
-                Create a task and assign it to the project owner or a project member.
-              </p>
-            </div>
+            <p className="mt-1 text-sm text-slate-400">
+              Add a new task and assign it to a project member.
+            </p>
+          </div>
 
-            {taskError && (
-              <div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
-                {taskError}
-              </div>
-            )}
+          <button
+            type="button"
+            onClick={() => {
+              resetTaskForm();
+              setTaskError("");
+              setTaskSuccess("");
+              setIsAddingTask(false);
+            }}
+            disabled={isAddingTask}
+            className="rounded-lg p-2 text-slate-400 transition hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
 
-            {taskSuccess && (
-              <div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300">
-                {taskSuccess}
-              </div>
-            )}
-
-            <div className="mt-6 grid gap-5">
-
-              {/* Title */}
-              <div>
-                <label
-                  htmlFor="taskTitle"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Task Title
-                </label>
-
-                <input
-                  id="taskTitle"
-                  type="text"
-                  value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    setTaskError("");
-                    setTaskSuccess("");
-                  }}
-                  placeholder="Enter task title..."
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  htmlFor="taskDescription"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Description
-                </label>
-
-                <textarea
-                  id="taskDescription"
-                  value={description}
-                  onChange={(event) => {
-                    setDescription(event.target.value);
-                    setTaskError("");
-                    setTaskSuccess("");
-                  }}
-                  rows={4}
-                  placeholder="Describe the task..."
-                  className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-                />
-              </div>
-
-              {/* Status + Priority */}
-              <div className="grid gap-5 sm:grid-cols-2">
-
-                <div>
-                  <label
-                    htmlFor="taskStatus"
-                    className="mb-2 block text-sm font-medium text-slate-200"
-                  >
-                    Status
-                  </label>
-
-                  <select
-                    id="taskStatus"
-                    value={status}
-                    onChange={(event) =>
-                      setStatus(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-                  >
-                    <option value="Planning">
-                      Planning
-                    </option>
-
-                    <option value="In Progress">
-                      In Progress
-                    </option>
-
-                    <option value="Completed">
-                      Completed
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="taskPriority"
-                    className="mb-2 block text-sm font-medium text-slate-200"
-                  >
-                    Priority
-                  </label>
-
-                  <select
-                    id="taskPriority"
-                    value={priority}
-                    onChange={(event) =>
-                      setPriority(event.target.value)
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-                  >
-                    <option value="Low">
-                      Low
-                    </option>
-
-                    <option value="Medium">
-                      Medium
-                    </option>
-
-                    <option value="High">
-                      High
-                    </option>
-
-                    <option value="Critical">
-                      Critical
-                    </option>
-                  </select>
-                </div>
-
-              </div>
-
-              {/* Assignee */}
-              <div>
-                <label
-                  htmlFor="taskAssignee"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Assign To
-                </label>
-
-                <select
-                  id="taskAssignee"
-                  value={assignedTo}
-                  onChange={(event) =>
-                    setAssignedTo(event.target.value)
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-                >
-                  <option value="">
-                    Unassigned
-                  </option>
-
-                  {project.owner && (
-                    <option value={project.owner._id}>
-                      {project.owner.name} (Owner)
-                    </option>
-                  )}
-
-                  {project.members?.map((member) => (
-                    <option
-                      key={member._id}
-                      value={member._id}
-                    >
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="mt-2 text-xs text-slate-500">
-                  Only the project owner and current project members can be assigned.
-                </p>
-              </div>
-
-              {/* Create */}
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleAddTask}
-                  disabled={isAddingTask}
-                  className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isAddingTask
-                    ? "Creating..."
-                    : "Create Task"}
-                </button>
-              </div>
-            </div>
-          </section>
+        {/* Error */}
+        {taskError && (
+          <div className="mb-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+            {taskError}
+          </div>
         )}
 
-        {/* Tasks */}
-        <section className="mt-6">
-          {tasks.length > 0 ? (
-            <div className="space-y-4">
-              {tasks.map((task, index) => (
-                <TaskCard
-                  key={task._id}
-                  task={task}
-                  index={index}
-                  isOwner={isOwner}
-                  isDeleting={
-                    deletingTaskId === task._id
-                  }
-                  onOpen={() =>
-                    handleOpenTask(task._id)
-                  }
-                  onDelete={(event) =>
-                    handleDeleteTask(
-                      event,
-                      task._id
-                    )
-                  }
-                />
+        {/* Success */}
+        {taskSuccess && (
+          <div className="mb-5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300">
+            {taskSuccess}
+          </div>
+        )}
+
+        <div className="grid gap-5">
+
+          {/* Title */}
+          <div>
+            <label
+              htmlFor="taskTitle"
+              className="mb-2 block text-sm font-medium text-slate-300"
+            >
+              Title
+            </label>
+
+            <input
+              id="taskTitle"
+              type="text"
+              value={title}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                setTaskError("");
+                setTaskSuccess("");
+              }}
+              placeholder="e.g. Implement user authentication"
+              maxLength={100}
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label
+              htmlFor="taskDescription"
+              className="mb-2 block text-sm font-medium text-slate-300"
+            >
+              Description
+            </label>
+
+            <textarea
+              id="taskDescription"
+              value={description}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                setTaskError("");
+                setTaskSuccess("");
+              }}
+              rows={4}
+              placeholder="Describe the task..."
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10"
+            />
+          </div>
+
+          {/* Status + Priority */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+
+            <div>
+              <label
+                htmlFor="taskStatus"
+                className="mb-2 block text-sm font-medium text-slate-300"
+              >
+                Status
+              </label>
+
+              <select
+                id="taskStatus"
+                value={status}
+                onChange={(event) =>
+                  setStatus(event.target.value)
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+              >
+                <option value="Planning">
+                  Planning
+                </option>
+
+                <option value="In Progress">
+                  In Progress
+                </option>
+
+                <option value="Completed">
+                  Completed
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="taskPriority"
+                className="mb-2 block text-sm font-medium text-slate-300"
+              >
+                Priority
+              </label>
+
+              <select
+                id="taskPriority"
+                value={priority}
+                onChange={(event) =>
+                  setPriority(event.target.value)
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+
+          </div>
+
+          {/* Assignee */}
+          <div>
+            <label
+              htmlFor="taskAssignee"
+              className="mb-2 block text-sm font-medium text-slate-300"
+            >
+              Assign To
+            </label>
+
+            <select
+              id="taskAssignee"
+              value={assignedTo}
+              onChange={(event) =>
+                setAssignedTo(event.target.value)
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+            >
+              <option value="">
+                Unassigned
+              </option>
+
+              {project.owner && (
+                <option value={project.owner._id}>
+                  {project.owner.name} (Owner)
+                </option>
+              )}
+
+              {project.members?.map((member) => (
+                <option
+                  key={member._id}
+                  value={member._id}
+                >
+                  {member.name}
+                </option>
               ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-white/10 px-6 py-12 text-center">
-              <div className="text-3xl">
-                ✓
-              </div>
+            </select>
 
-              <p className="mt-4 text-sm font-medium text-slate-300">
-                No tasks yet
-              </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Only the project owner can create and assign tasks.
+            </p>
+          </div>
 
-              <p className="mt-1 text-xs text-slate-500">
-                {isOwner
-                  ? "Create the first task for this project."
-                  : "The project owner has not created any tasks yet."}
-              </p>
-            </div>
-          )}
-        </section>
-      </main>
+          {/* Actions */}
+          <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+
+            <button
+              type="button"
+              onClick={() => {
+                resetTaskForm();
+                setTaskError("");
+                setTaskSuccess("");
+                setIsAddingTask(false);
+              }}
+              disabled={isAddingTask}
+              className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddTask}
+              disabled={isAddingTask}
+              className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isAddingTask
+                ? "Creating..."
+                : "Create Task"}
+            </button>
+
+          </div>
+        </div>
+      </section>
+    )}
+    </section>
+)}
+    {/* Tasks */}
+<section className="mt-6">
+  {tasks.length > 0 ? (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {tasks.map((task, index) => (
+        <TaskCard
+          key={task._id}
+          task={task}
+          index={index}
+          isOwner={isOwner}
+          isDeleting={deletingTaskId === task._id}
+          onOpen={() => handleOpenTask(task._id)}
+          onDelete={(event) =>
+            handleDeleteTask(event, task._id)
+          }
+        />
+      ))}
+    </div>
+  ) : (
+    <div className="rounded-2xl border border-dashed border-white/10 px-6 py-12 text-center">
+      <div className="text-3xl">✓</div>
+
+      <p className="mt-4 text-sm font-medium text-slate-300">
+        No tasks yet
+      </p>
+
+      <p className="mt-1 text-xs text-slate-500">
+        {isOwner
+          ? "Create the first task for this project."
+          : "The project owner has not created any tasks yet."}
+      </p>
+    </div>
+  )}
+</section>
+
+   </main>
     </div>
   );
 }
@@ -516,9 +554,9 @@ function TaskCard({
   return (
     <article
       onClick={onOpen}
-      className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
+      className="flex h-full cursor-pointer flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-indigo-400/30 hover:bg-white/[0.05]"
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex h-full flex-col gap-5">
 
         {/* Top */}
         <div className="flex items-start gap-4">
@@ -527,19 +565,14 @@ function TaskCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-slate-100">
+            <h3 className="break-words text-base font-semibold text-slate-100">
               {task.title}
             </h3>
-
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
-              {task.description || "No description"}
-            </p>
           </div>
         </div>
 
         {/* Details */}
-        <div className="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-3">
-
+        <div className="grid gap-4 border-t border-white/10 pt-4 sm:grid-cols-3">
           <TaskInfo
             label="Assignee"
             value={assigneeName}
@@ -554,11 +587,10 @@ function TaskCard({
             label="Priority"
             value={task.priority || "Medium"}
           />
-
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between border-t border-white/10 pt-4">
+        <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-4">
           <span className="text-xs text-indigo-300">
             View Task →
           </span>
@@ -570,9 +602,7 @@ function TaskCard({
               disabled={isDeleting}
               className="rounded-lg px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isDeleting
-                ? "Deleting..."
-                : "Delete"}
+              {isDeleting ? "Deleting..." : "Delete"}
             </button>
           )}
         </div>

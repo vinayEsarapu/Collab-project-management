@@ -13,6 +13,7 @@ const {
   updateTask,
   deleteTask,
   getProjectActivity,
+  deleteProjectActivity,
   getProjectTasks,
 getTaskById,
 } = require("../controllers/Projectcontroller");
@@ -48,6 +49,10 @@ router.get("/users", getUsersForMemberSelection);
 router.get("/", getProjects);
 
 router.get("/:id/activity", getProjectActivity);
+router.delete(
+  "/:id/activity/:activityId",
+  deleteProjectActivity
+);
 
 // TASKS - OWNER ONLY
 // Get all tasks for a project

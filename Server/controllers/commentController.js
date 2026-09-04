@@ -60,8 +60,10 @@ const getComments = async (req, res) => {
     const page = Math.max(requestedPage, 1);
 
     const name =
-      (req.query.name || "").trim();
+  (req.query.name || "").trim();
 
+const commenterId =
+  (req.query.commenterId || "").trim();
     /*
      * Build comment filter.
      */
@@ -72,38 +74,53 @@ const getComments = async (req, res) => {
     /*
      * Name filter.
      */
-    if (name) {
-      const matchingUsers = await User.find({
-        name: {
-          $regex: name,
-          $options: "i",
-        },
-      }).select("_id");
+    /*
+ * Commenter filter.
+ *
+ * Dropdown filtering uses commenterId.
+ * Name filtering is kept as a fallback for compatibility.
+ */
+if (commenterId) {
+  if (
+    !mongoose.Types.ObjectId.isValid(commenterId)
+  ) {
+    return res.status(400).json({
+      message: "Invalid commenter ID",
+    });
+  }
 
-      const userIds = matchingUsers.map(
-        (user) => user._id
-      );
+  filter.createdBy = commenterId;
+} else if (name) {
+  const matchingUsers = await User.find({
+    name: {
+      $regex: name,
+      $options: "i",
+    },
+  }).select("_id");
 
-      if (userIds.length === 0) {
-        return res.status(200).json({
-          count: 0,
-          comments: [],
-          pagination: {
-            currentPage: 1,
-            totalPages: 0,
-            totalComments: 0,
-            limit,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          },
-        });
-      }
+  const userIds = matchingUsers.map(
+    (user) => user._id
+  );
 
-      filter.createdBy = {
-        $in: userIds,
-      };
-    }
+  if (userIds.length === 0) {
+    return res.status(200).json({
+      count: 0,
+      comments: [],
+      pagination: {
+        currentPage: 1,
+        totalPages: 0,
+        totalComments: 0,
+        limit,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+  }
 
+  filter.createdBy = {
+    $in: userIds,
+  };
+}
     /*
      * Total comments.
      */
