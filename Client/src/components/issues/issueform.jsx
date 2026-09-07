@@ -1,90 +1,74 @@
-import { useState , useEffect } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/Authcontext.jsx";
 
-function IssueForm({ project , projectId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
+function IssueForm({
+  project,
+  projectId,
+  taskId,
+  members = [],
+  issue = null,
+  canAssign = false,
+  onSubmit,
+  onClose,
+}) {
   const { user } = useAuth();
   const currentUserId = user?._id || user?.id;
-  const [formData, setFormData] = useState({
-  title: issue?.title || "",
-  description: issue?.description || "",
-  status: issue?.status || "Open",
-  priority: issue?.priority || "Medium",
-  labels: issue?.labels || [],
-  assignedTo:
-  issue?.assignedTo?._id ||
-  issue?.assignedTo ||
-  "",
+  const isTaskIssue = Boolean(taskId);
+  const isProjectIssue = !isTaskIssue;
 
-referredTo:
-  issue?.referredTo?._id ||
-  issue?.referredTo ||
-  "",
+  const [formData, setFormData] = useState({
+    title: issue?.title || "",
+    description: issue?.description || "",
+    status: issue?.status || "Open",
+    priority: issue?.priority || "Medium",
+    labels: issue?.labels || [],
+    assignedTo: issue?.assignedTo?._id || issue?.assignedTo || "",
+    referredTo: issue?.referredTo?._id || issue?.referredTo || "",
   });
 
   useEffect(() => {
-  if (!issue) return;
+    if (!issue) return;
 
-  setFormData({
-    title: issue.title || "",
-    description: issue.description || "",
-    status: issue.status || "Open",
-    priority: issue.priority || "Medium",
-    labels: issue.labels || [],
-
-    assignedTo:
-      issue.assignedTo?._id ||
-      issue.assignedTo ||
-      "",
-
-    referredTo:
-      issue.referredTo?._id ||
-      issue.referredTo ||
-      "",
-  });
-}, [issue]);
+    setFormData({
+      title: issue.title || "",
+      description: issue.description || "",
+      status: issue.status || "Open",
+      priority: issue.priority || "Medium",
+      labels: issue.labels || [],
+      assignedTo: issue.assignedTo?._id || issue.assignedTo || "",
+      referredTo: issue.referredTo?._id || issue.referredTo || "",
+    });
+  }, [issue]);
 
   const [labelInput, setLabelInput] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const projectMembers = useMemo(() => {
-  const projectUsers = members?.length
-    ? members
-    : project?.members || [];
+    const projectUsers = members?.length ? members : project?.members || [];
+    const owner = project?.owner;
+    const users = owner ? [owner, ...projectUsers] : projectUsers;
 
-  const owner = project?.owner;
+    return users.filter((member, index, self) => {
+      const memberId = member?._id?.toString();
+      if (!memberId) return false;
 
-  const users = owner
-    ? [owner, ...projectUsers]
-    : projectUsers;
-
-  return users.filter((user, index, self) => {
-    const userId = user?._id?.toString();
-
-    if (!userId) return false;
-
-    return (
-      index ===
-      self.findIndex(
-        (item) => item?._id?.toString() === userId
-      )
-    );
-  });
-}, [members, project]);
+      return (
+        index ===
+        self.findIndex(
+          (item) => item?._id?.toString() === memberId
+        )
+      );
+    });
+  }, [members, project]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
+    setFormData((previous) => ({ ...previous, [name]: value }));
   };
 
   const addLabel = () => {
     const label = labelInput.trim();
-
     if (!label) return;
 
     if (formData.labels.includes(label)) {
@@ -96,22 +80,18 @@ referredTo:
       ...previous,
       labels: [...previous.labels, label],
     }));
-
     setLabelInput("");
   };
 
   const removeLabel = (labelToRemove) => {
     setFormData((previous) => ({
       ...previous,
-      labels: previous.labels.filter(
-        (label) => label !== labelToRemove
-      ),
+      labels: previous.labels.filter((label) => label !== labelToRemove),
     }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     setError("");
 
     if (!formData.title.trim()) {
@@ -126,25 +106,31 @@ referredTo:
 
     try {
       setSubmitting(true);
+
       const payload = {
-  title: formData.title.trim(),
-  description: formData.description.trim(),
-  status: formData.status,
-  priority: formData.priority,
-  labels: formData.labels,
-  project: projectId,
-  referredTo: formData.referredTo || null,
-};
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        status: formData.status,
+        priority: formData.priority,
+        labels: formData.labels,
+        project: projectId,
+      };
 
-// Only owner-controlled UI sends actual assignment.
-if (canAssign) {
-  payload.assignedTo = formData.assignedTo || null;
-}
+      // Project-level issues support referral and owner-controlled assignment.
+      if (isProjectIssue) {
+        payload.referredTo = formData.referredTo || null;
 
-await onSubmit(payload);
-    } catch (error) {
+        if (canAssign) {
+          payload.assignedTo = formData.assignedTo || null;
+        }
+      }
+
+      // Task-level issues intentionally send neither assignedTo nor referredTo.
+      // The server derives assignedTo from the task assignee.
+      await onSubmit(payload);
+    } catch (submitError) {
       setError(
-        error.response?.data?.message ||
+        submitError.response?.data?.message ||
           "Failed to save issue. Please try again."
       );
     } finally {
@@ -154,21 +140,18 @@ await onSubmit(payload);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl animate-[fadeIn_0.2s_ease-out] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl max-h-[90vh]">
-        
-        {/* Header */}
+      <div className="max-h-[90vh] w-full max-w-2xl animate-[fadeIn_0.2s_ease-out] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">
-               {issue ? "Edit Issue" : "Create Issue"}
-              
+              {issue ? "Edit Issue" : "Create Issue"}
             </h2>
-
             <p className="mt-1 text-sm text-slate-400">
-                {issue
-                  ? "Update the issue details."
+              {issue
+                ? "Update the issue details."
+                : isTaskIssue
+                  ? "Add a new issue to this task."
                   : "Add a new issue to this project."}
-             // Add a new issue to this project.
             </p>
           </div>
 
@@ -183,20 +166,16 @@ await onSubmit(payload);
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          
-          {/* Error */}
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
 
-          {/* Title */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Title
             </label>
-
             <input
               type="text"
               name="title"
@@ -208,12 +187,10 @@ await onSubmit(payload);
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Description
             </label>
-
             <textarea
               name="description"
               value={formData.description}
@@ -224,14 +201,11 @@ await onSubmit(payload);
             />
           </div>
 
-          {/* Status + Priority */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">
                 Status
               </label>
-
               <select
                 name="status"
                 value={formData.status}
@@ -249,7 +223,6 @@ await onSubmit(payload);
               <label className="mb-2 block text-sm font-medium text-slate-300">
                 Priority
               </label>
-
               <select
                 name="priority"
                 value={formData.priority}
@@ -264,96 +237,79 @@ await onSubmit(payload);
             </div>
           </div>
 
-          {/* Assignee */}
-          {/* Refer To */}
-{!issue && (
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-300">
-      Refer To
-    </label>
+          {isProjectIssue && !issue && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">
+                Refer To
+              </label>
+              <select
+                name="referredTo"
+                value={formData.referredTo}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+              >
+                <option value="">No referral</option>
+                {projectMembers
+                  .filter((member) => {
+                    const memberId = member?._id?.toString();
+                    return (
+                      memberId &&
+                      memberId !== currentUserId?.toString()
+                    );
+                  })
+                  .map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.name || member.email}
+                    </option>
+                  ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Referral does not assign the issue. Assignment is controlled
+                only by the project owner.
+              </p>
+            </div>
+          )}
 
-    <select
-      name="referredTo"
-      value={formData.referredTo}
-      onChange={handleChange}
-      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-    >
-      <option value="">
-        No referral
-      </option>
+          {isProjectIssue && canAssign && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">
+                Assign To
+              </label>
+              <select
+                name="assignedTo"
+                value={formData.assignedTo}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+              >
+                <option value="">Unassigned</option>
+                {projectMembers.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.name || member.email}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Only the project owner can assign or reassign an issue.
+              </p>
+            </div>
+          )}
 
-       {projectMembers
-  .filter((member) => {
-    const memberId = member?._id?.toString();
+          {isTaskIssue && (
+            <div className="rounded-xl border border-indigo-400/10 bg-indigo-400/5 px-4 py-3 text-sm text-slate-400">
+              This task issue is automatically assigned to the user assigned
+              to the task. Task issues cannot be referred or manually assigned.
+            </div>
+          )}
 
-    return (
-      memberId &&
-      memberId !== currentUserId?.toString()
-    );
-  })
-  .map((member) => (
-    <option
-      key={member._id}
-      value={member._id}
-    >
-      {member.name || member.email}
-    </option>
-  ))}
-    </select>
-
-    <p className="mt-2 text-xs text-slate-500">
-      Referencing someone does not assign the issue to them.
-      Only the project owner can assign the issue.
-    </p>
-  </div>
-)}
-
-{/* Actual Assignment */}
-{canAssign && (
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-300">
-      Assign To
-    </label>
-
-    <select
-      name="assignedTo"
-      value={formData.assignedTo}
-      onChange={handleChange}
-      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-    >
-      <option value="">
-        Unassigned
-      </option>
-
-      {projectMembers.map((member) => (
-        <option
-          key={member._id}
-          value={member._id}
-        >
-          {member.name || member.email}
-        </option>
-      ))}
-    </select>
-
-    <p className="mt-2 text-xs text-slate-500">
-      Only the project owner can assign or reassign an issue.
-    </p>
-  </div>
-)}
-
-          {/* Labels */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Labels
             </label>
-
             <div className="flex gap-2">
               <input
                 type="text"
                 value={labelInput}
-                onChange={(event) =>
-                  setLabelInput(event.target.value)
-                }
+                onChange={(event) => setLabelInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -363,7 +319,6 @@ await onSubmit(payload);
                 placeholder="bug, frontend..."
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-indigo-400/50"
               />
-
               <button
                 type="button"
                 onClick={addLabel}
@@ -389,30 +344,27 @@ await onSubmit(payload);
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
+              disabled={submitting}
               className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
             >
               Cancel
             </button>
-
             <button
               type="submit"
-               disabled={submitting}
-              className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20"
+              disabled={submitting}
+              className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
-               {submitting
+              {submitting
                 ? issue
                   ? "Saving..."
                   : "Creating..."
                 : issue
                   ? "Save Changes"
                   : "Create Issue"}
-              
-            
             </button>
           </div>
         </form>
