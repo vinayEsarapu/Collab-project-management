@@ -110,21 +110,12 @@ const authorizeIssueCreation = async (req, res, next) => {
 
     const userId = req.user.userId.toString();
 
-    const isOwner = project.owner.toString() === userId;
+    const isOwner =
+      project.owner.toString() === userId;
 
     const isMember = project.members.some(
       (member) => member.toString() === userId
     );
-
-    if (req.body.task) {
-  const task = project.tasks.id(req.body.task);
-
-  if (!task) {
-    return res.status(400).json({
-      message: "Task does not belong to this project",
-    });
-  }
-}
 
     if (!isOwner && !isMember) {
       return res.status(403).json({
@@ -133,62 +124,94 @@ const authorizeIssueCreation = async (req, res, next) => {
       });
     }
 
+    /*
+     * TASK-LEVEL ISSUE
+     *
+     * Task issues cannot be manually assigned or referred.
+     * The controller will automatically assign the issue
+     * to the user assigned to the task.
+     */
+    if (req.body.task) {
+      const task = project.tasks.id(req.body.task);
+
+      if (!task) {
+        return res.status(400).json({
+          message: "Task does not belong to this project",
+        });
+      }
+
+      // Prevent client-side assignment/referral for task issues.
+      delete req.body.assignedTo;
+      delete req.body.referredTo;
+
+      req.project = project;
+      return next();
+    }
+
+    /*
+     * PROJECT-LEVEL ISSUE
+     *
+     * Assignment is owner-only.
+     * Referral is available to project members/owner.
+     */
     const requestedAssignee = req.body.assignedTo || null;
-const requestedReferral = req.body.referredTo || null;
+    const requestedReferral = req.body.referredTo || null;
 
+    // Only project owner can assign issues.
+    if (requestedAssignee && !isOwner) {
+      return res.status(403).json({
+        message: "Only the project owner can assign issues",
+      });
+    }
 
-// Actual assignment is owner-only.
-if (requestedAssignee && !isOwner) {
-  return res.status(403).json({
-    message: "Only the project owner can assign issues",
-  });
-}
+    // Validate assignee belongs to the project.
+    if (requestedAssignee) {
+      const isProjectMember = project.members.some(
+        (member) =>
+          member.toString() === requestedAssignee.toString()
+      );
 
-// Validate actual assignee.
-if (requestedAssignee) {
-  const isProjectMember = project.members.some(
-    (member) =>
-      member.toString() === requestedAssignee.toString()
-  );
+      const isOwnerAssignee =
+        project.owner.toString() ===
+        requestedAssignee.toString();
 
-  const isOwnerAssignee =
-    project.owner.toString() === requestedAssignee.toString();
+      if (!isProjectMember && !isOwnerAssignee) {
+        return res.status(403).json({
+          message:
+            "Issue can only be assigned to a member of this project",
+        });
+      }
+    }
 
-  if (!isProjectMember && !isOwnerAssignee) {
-    return res.status(403).json({
-      message: "Issue can only be assigned to a member of this project",
-    });
-  }
-}
+    // Referral is allowed for project members/owner.
+    if (requestedReferral) {
+      const isReferralOwner =
+        project.owner.toString() ===
+        requestedReferral.toString();
 
-// Referral is allowed for project members.
-// It does NOT grant assignment authority.
-if (requestedReferral) {
-  const isReferralOwner =
-    project.owner.toString() === requestedReferral.toString();
+      const isReferralMember = project.members.some(
+        (member) =>
+          member.toString() ===
+          requestedReferral.toString()
+      );
 
-  const isReferralMember = project.members.some(
-    (member) =>
-      member.toString() === requestedReferral.toString()
-  );
+      if (!isReferralOwner && !isReferralMember) {
+        return res.status(403).json({
+          message:
+            "Issue can only be referred to a member of this project",
+        });
+      }
 
-  if (!isReferralOwner && !isReferralMember) {
-    return res.status(403).json({
-      message: "Issue can only be referred to a member of this project",
-    });
-  }
-
-  // Don't allow referring the issue back to the creator.
-  if (
-    requestedReferral.toString() ===
-    req.user.userId.toString()
-  ) {
-    return res.status(400).json({
-      message: "You cannot refer an issue to yourself",
-    });
-  }
-}
-
+      // Don't allow referring an issue to yourself.
+      if (
+        requestedReferral.toString() ===
+        req.user.userId.toString()
+      ) {
+        return res.status(400).json({
+          message: "You cannot refer an issue to yourself",
+        });
+      }
+    }
 
     req.project = project;
     next();

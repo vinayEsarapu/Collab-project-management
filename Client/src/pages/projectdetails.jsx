@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getProjectById,
   updateProject,
+  deleteProject,
   getUsersForMemberSelection,
   addMember,
   removeMember,
-   createProjectComment,
+  createProjectComment,
 } from "../services/projectservices";
 import { useAuth } from "../context/Authcontext.jsx";
 import EditProjectForm from "../pages/EditProjectForm";
@@ -271,6 +272,28 @@ const handleSelectMember = (userId) => {
   });
 };
 
+const handleDeleteProject = async () => {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${project.title}"? This action cannot be undone.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteProject(id);
+
+    navigate("/projects");
+  } catch (error) {
+    console.error("Failed to delete project:", error);
+
+    setError(
+      error.response?.data?.message ||
+        "Unable to delete project."
+    );
+  }
+};
 
 
 
@@ -355,8 +378,9 @@ const handleSelectMember = (userId) => {
               <div className="flex flex-col gap-3 sm:items-end">
   <StatusBadge status={project.status} />
 
-  <div className="flex flex-wrap gap-3">
-    {isOwner && (
+ <div className="flex flex-wrap gap-3">
+  {isOwner && (
+    <>
       <button
         type="button"
         onClick={handleStartEditProject}
@@ -364,18 +388,27 @@ const handleSelectMember = (userId) => {
       >
         Edit Project
       </button>
-    )}
 
-    <button
-      type="button"
-      onClick={() =>
-        navigate(`/projects/${id}/issues`)
-      }
-      className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-400"
-    >
-      Project Issues →
-    </button>
-  </div>
+      <button
+        type="button"
+        onClick={handleDeleteProject}
+        className="rounded-xl border border-red-400/20 bg-red-400/10 px-5 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-400/20 hover:text-red-200"
+      >
+        Delete Project
+      </button>
+    </>
+  )}
+
+  <button
+    type="button"
+    onClick={() =>
+      navigate(`/projects/${id}/issues`)
+    }
+    className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-400"
+  >
+    Project Issues →
+  </button>
+</div>
 </div>
             </div>
           </div>

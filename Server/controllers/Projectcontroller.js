@@ -1,11 +1,9 @@
 const Project = require("../models/Project.js");
 const User = require("../models/user.js");
+const Issue = require("../models/issues.js");
 const ProjectActivity = require("../models/ProjectActivity.js");
 const { createActivity } = require("../services/activityService");
 const mongoose = require("mongoose");
-//const ProjectLog = require("../models/ProjectLog");
-
-
 
 // ADD TASK - OWNER ONLY
 const addTask = async (req, res, next) => {
@@ -29,7 +27,10 @@ const addTask = async (req, res, next) => {
     }
 
     // Only project owner can create tasks
-    if (project.owner.toString() !== req.user.userId.toString()) {
+    if (
+      project.owner.toString() !==
+      req.user.userId.toString()
+    ) {
       return res.status(403).json({
         message: "Only the project owner can create tasks",
       });
@@ -50,10 +51,13 @@ const addTask = async (req, res, next) => {
     // Validate assignee
     if (assignedTo) {
       const isOwner =
-        project.owner.toString() === assignedTo.toString();
+        project.owner.toString() ===
+        assignedTo.toString();
 
       const isMember = project.members.some(
-        (member) => member.toString() === assignedTo.toString()
+        (member) =>
+          member.toString() ===
+          assignedTo.toString()
       );
 
       if (!isOwner && !isMember) {
@@ -66,7 +70,9 @@ const addTask = async (req, res, next) => {
 
     const task = {
       title: title.trim(),
-      description: description ? description.trim() : "",
+      description: description
+        ? description.trim()
+        : "",
       status: status || "Planning",
       priority: priority || "Medium",
       assignedTo: assignedTo || null,
@@ -79,15 +85,15 @@ const addTask = async (req, res, next) => {
     const createdTask =
       project.tasks[project.tasks.length - 1];
 
-      await createActivity({
-  task: createdTask._id,
-  project: project._id,
-  user: req.user.userId,
-  action: "TASK_CREATED",
-  details: {
-    title: createdTask.title,
-  },
-});
+    await createActivity({
+      task: createdTask._id,
+      project: project._id,
+      user: req.user.userId,
+      action: "TASK_CREATED",
+      details: {
+        title: createdTask.title,
+      },
+    });
 
     res.status(201).json({
       message: "Task created successfully",
@@ -99,7 +105,7 @@ const addTask = async (req, res, next) => {
   }
 };
 
-// UPDATE TASK - OWNER ONLY
+// UPDATE TASK - OWNER / ASSIGNED MEMBER
 const updateTask = async (req, res, next) => {
   try {
     const { id, taskId } = req.params;
@@ -151,150 +157,287 @@ const updateTask = async (req, res, next) => {
       !isOwner
     ) {
       return res.status(403).json({
-        message: "Only the project owner can change task assignment",
+        message:
+          "Only the project owner can change task assignment",
       });
     }
 
     // Validate new assignee
     if (assignedTo) {
       const assigneeIsOwner =
-        project.owner.toString() === assignedTo.toString();
+        project.owner.toString() ===
+        assignedTo.toString();
 
       const assigneeIsMember =
         project.members.some(
           (member) =>
-            member.toString() === assignedTo.toString()
+            member.toString() ===
+            assignedTo.toString()
         );
 
-      if (!assigneeIsOwner && !assigneeIsMember) {
+      if (
+        !assigneeIsOwner &&
+        !assigneeIsMember
+      ) {
         return res.status(400).json({
           message:
             "Task can only be assigned to the project owner or a project member",
         });
       }
     }
+
     const changes = [];
 
+    /*
+     * IMPORTANT
+     *
+     * Capture the old task assignee BEFORE changing it.
+     * We need this to determine whether the task assignment
+     * actually changed.
+     */
+    const oldAssignedTo = task.assignedTo
+      ? task.assignedTo.toString()
+      : null;
+
+    let taskAssignmentChanged = false;
+
+    let newTaskAssignedTo = oldAssignedTo;
+
+    // TITLE
     if (title !== undefined) {
-  if (!title.trim()) {
-    return res.status(400).json({
-      message: "Task title cannot be empty",
-    });
-  }
+      if (!title.trim()) {
+        return res.status(400).json({
+          message:
+            "Task title cannot be empty",
+        });
+      }
 
-  const newTitle = title.trim();
+      const newTitle = title.trim();
 
-  if (task.title !== newTitle) {
-    changes.push({
-      action: "TASK_UPDATED",
-      details: {
-        field: "title",
-        from: task.title,
-        to: newTitle,
-      },
-    });
+      if (task.title !== newTitle) {
+        changes.push({
+          action: "TASK_UPDATED",
+          details: {
+            field: "title",
+            from: task.title,
+            to: newTitle,
+          },
+        });
 
-    task.title = newTitle;
-  }
-}
-
-if (description !== undefined) {
-  if (!description.trim()) {
-    return res.status(400).json({
-      message: "Task description cannot be empty",
-    });
-  }
-
-  const newDescription = description.trim();
-
-  if (task.description !== newDescription) {
-    changes.push({
-      action: "TASK_UPDATED",
-      details: {
-        field: "description",
-        from: task.description,
-        to: newDescription,
-      },
-    });
-
-    task.description = newDescription;
-  }
-}
-
-if (status !== undefined && task.status !== status) {
-  changes.push({
-    action: "TASK_STATUS_CHANGED",
-    details: {
-      from: task.status,
-      to: status,
-    },
-  });
-
-  task.status = status;
-}
-
-if (priority !== undefined && task.priority !== priority) {
-  changes.push({
-    action: "TASK_PRIORITY_CHANGED",
-    details: {
-      from: task.priority,
-      to: priority,
-    },
-  });
-
-  task.priority = priority;
-}
-
-if (assignedTo !== undefined) {
-  const oldAssignedTo = task.assignedTo
-    ? task.assignedTo.toString()
-    : null;
-
-  const newAssignedTo = assignedTo
-    ? assignedTo.toString()
-    : null;
-
-  if (oldAssignedTo !== newAssignedTo) {
-    let action = "TASK_ASSIGNED";
-
-    if (oldAssignedTo && newAssignedTo) {
-      action = "TASK_REASSIGNED";
-    } else if (oldAssignedTo && !newAssignedTo) {
-      action = "TASK_UNASSIGNED";
+        task.title = newTitle;
+      }
     }
 
-    changes.push({
-      action,
-      details: {
-        from: oldAssignedTo,
-        to: newAssignedTo,
-      },
-    });
+    // DESCRIPTION
+    if (description !== undefined) {
+      if (!description.trim()) {
+        return res.status(400).json({
+          message:
+            "Task description cannot be empty",
+        });
+      }
 
-    task.assignedTo = assignedTo || null;
-  }
-}
+      const newDescription =
+        description.trim();
+
+      if (
+        task.description !==
+        newDescription
+      ) {
+        changes.push({
+          action: "TASK_UPDATED",
+          details: {
+            field: "description",
+            from: task.description,
+            to: newDescription,
+          },
+        });
+
+        task.description =
+          newDescription;
+      }
+    }
+
+    // STATUS
+    if (
+      status !== undefined &&
+      task.status !== status
+    ) {
+      changes.push({
+        action: "TASK_STATUS_CHANGED",
+        details: {
+          from: task.status,
+          to: status,
+        },
+      });
+
+      task.status = status;
+    }
+
+    // PRIORITY
+    if (
+      priority !== undefined &&
+      task.priority !== priority
+    ) {
+      changes.push({
+        action: "TASK_PRIORITY_CHANGED",
+        details: {
+          from: task.priority,
+          to: priority,
+        },
+      });
+
+      task.priority = priority;
+    }
+
+    // ASSIGNMENT
+    if (assignedTo !== undefined) {
+      const newAssignedToValue =
+        assignedTo
+          ? assignedTo.toString()
+          : null;
+
+      if (
+        oldAssignedTo !==
+        newAssignedToValue
+      ) {
+        taskAssignmentChanged = true;
+
+        newTaskAssignedTo =
+          newAssignedToValue;
+
+        let action = "TASK_ASSIGNED";
+
+        if (
+          oldAssignedTo &&
+          newAssignedToValue
+        ) {
+          action = "TASK_REASSIGNED";
+        } else if (
+          oldAssignedTo &&
+          !newAssignedToValue
+        ) {
+          action = "TASK_UNASSIGNED";
+        }
+
+        changes.push({
+          action,
+          details: {
+            from: oldAssignedTo,
+            to: newAssignedToValue,
+          },
+        });
+
+        task.assignedTo =
+          assignedTo || null;
+      }
+    }
+
+    /*
+     * Save the task first.
+     */
     await project.save();
 
+    /*
+     * =====================================================
+     * IMPORTANT FEATURE:
+     * SYNCHRONIZE TASK ISSUES WITH TASK ASSIGNEE
+     * =====================================================
+     *
+     * If the task assignment changed:
+     *
+     * Task assignedTo → new member
+     *
+     * Every issue belonging to this task gets:
+     *
+     * Issue assignedTo → same new member
+     *
+     * This makes the task assignee the single source
+     * of truth for all task-level issues.
+     */
+    if (taskAssignmentChanged) {
+      await Issue.updateMany(
+        {
+          project: project._id,
+          task: task._id,
+        },
+        {
+          $set: {
+            assignedTo:
+              newTaskAssignedTo || null,
+            referredTo: null,
+          },
+        }
+      );
+    }
+
+    /*
+     * Create task activities.
+     */
     for (const change of changes) {
-  await createActivity({
-    task: task._id,
-    project: project._id,
-    user: req.user.userId,
-    action: change.action,
-    details: change.details,
-  });
-}
+      await createActivity({
+        task: task._id,
+        project: project._id,
+        user: req.user.userId,
+        action: change.action,
+        details: change.details,
+      });
+    }
+
+    /*
+     * If the task was reassigned, create an activity
+     * indicating that its issues were synchronized.
+     *
+     * We don't need one activity per issue just to make
+     * the assignment work.
+     */
+    if (taskAssignmentChanged) {
+      await createActivity({
+        task: task._id,
+        project: project._id,
+        user: req.user.userId,
+        action: "TASK_ISSUES_REASSIGNED",
+        details: {
+          assignedTo:
+            newTaskAssignedTo || null,
+        },
+      });
+    }
+
+    /*
+     * Return the updated task and project.
+     *
+     * Populate task assignees so the frontend receives
+     * the current member's name.
+     */
+    const updatedProject =
+      await Project.findById(project._id)
+        .populate(
+          "owner",
+          "name userCode email"
+        )
+        .populate(
+          "members",
+          "name userCode email"
+        )
+        .populate(
+          "tasks.assignedTo",
+          "name userCode email"
+        );
+
+    const updatedTask =
+      updatedProject.tasks.id(taskId);
 
     res.status(200).json({
       message: "Task updated successfully",
-      task,
-      project,
+      task: updatedTask,
+      project: updatedProject,
     });
   } catch (error) {
     next(error);
   }
 };
+
 // DELETE TASK - OWNER ONLY
 const deleteTask = async (req, res, next) => {
   try {
@@ -314,7 +457,8 @@ const deleteTask = async (req, res, next) => {
       req.user.userId.toString()
     ) {
       return res.status(403).json({
-        message: "Only the project owner can delete tasks",
+        message:
+          "Only the project owner can delete tasks",
       });
     }
 
@@ -325,21 +469,20 @@ const deleteTask = async (req, res, next) => {
         message: "Task not found",
       });
     }
+
     await createActivity({
-  task: task._id,
-  project: project._id,
-  user: req.user.userId,
-  action: "TASK_DELETED",
-  details: {
-    title: task.title,
-  },
-});
+      task: task._id,
+      project: project._id,
+      user: req.user.userId,
+      action: "TASK_DELETED",
+      details: {
+        title: task.title,
+      },
+    });
 
     task.deleteOne();
 
     await project.save();
-
-    
 
     res.status(200).json({
       message: "Task deleted successfully",
@@ -350,14 +493,28 @@ const deleteTask = async (req, res, next) => {
   }
 };
 
-const getProjectTasks = async (req, res, next) => {
+const getProjectTasks = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id } = req.params;
 
-    const project = await Project.findById(id)
-      .populate("owner", "name email")
-      .populate("members", "name email")
-      .populate("tasks.assignedTo", "name email");
+    const project =
+      await Project.findById(id)
+        .populate(
+          "owner",
+          "name email"
+        )
+        .populate(
+          "members",
+          "name email"
+        )
+        .populate(
+          "tasks.assignedTo",
+          "name email"
+        );
 
     if (!project) {
       return res.status(404).json({
@@ -365,18 +522,24 @@ const getProjectTasks = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.userId.toString();
+    const userId =
+      req.user.userId.toString();
 
     const isOwner =
-      project.owner._id.toString() === userId;
+      project.owner._id.toString() ===
+      userId;
 
-    const isMember = project.members.some(
-      (member) => member._id.toString() === userId
-    );
+    const isMember =
+      project.members.some(
+        (member) =>
+          member._id.toString() ===
+          userId
+      );
 
     if (!isOwner && !isMember) {
       return res.status(403).json({
-        message: "You do not have access to this project",
+        message:
+          "You do not have access to this project",
       });
     }
 
@@ -389,14 +552,28 @@ const getProjectTasks = async (req, res, next) => {
   }
 };
 
-const getTaskById = async (req, res, next) => {
+const getTaskById = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { id, taskId } = req.params;
 
-    const project = await Project.findById(id)
-      .populate("owner", "name email")
-      .populate("members", "name email")
-      .populate("tasks.assignedTo", "name email");
+    const project =
+      await Project.findById(id)
+        .populate(
+          "owner",
+          "name email"
+        )
+        .populate(
+          "members",
+          "name email"
+        )
+        .populate(
+          "tasks.assignedTo",
+          "name email"
+        );
 
     if (!project) {
       return res.status(404).json({
@@ -404,22 +581,29 @@ const getTaskById = async (req, res, next) => {
       });
     }
 
-    const userId = req.user.userId.toString();
+    const userId =
+      req.user.userId.toString();
 
     const isOwner =
-      project.owner._id.toString() === userId;
+      project.owner._id.toString() ===
+      userId;
 
-    const isMember = project.members.some(
-      (member) => member._id.toString() === userId
-    );
+    const isMember =
+      project.members.some(
+        (member) =>
+          member._id.toString() ===
+          userId
+      );
 
     if (!isOwner && !isMember) {
       return res.status(403).json({
-        message: "You do not have access to this project",
+        message:
+          "You do not have access to this project",
       });
     }
 
-    const task = project.tasks.id(taskId);
+    const task =
+      project.tasks.id(taskId);
 
     if (!task) {
       return res.status(404).json({
@@ -434,9 +618,12 @@ const getTaskById = async (req, res, next) => {
     next(error);
   }
 };
+
 // CREATE PROJECT
-// CREATE PROJECT
-const createProject = async (req, res) => {
+const createProject = async (
+  req,
+  res
+) => {
   try {
     const {
       title,
@@ -447,60 +634,65 @@ const createProject = async (req, res) => {
       members,
     } = req.body;
 
-    // -----------------------------
     // Validate members
-    // -----------------------------
-
     if (!Array.isArray(members)) {
       return res.status(400).json({
         message: "Members must be an array",
       });
     }
 
-    const ownerId = req.user.userId.toString();
+    const ownerId =
+      req.user.userId.toString();
 
     const selectedMembers = [
       ...new Set(
-        members.map((memberId) => memberId.toString())
+        members.map((memberId) =>
+          memberId.toString()
+        )
       ),
     ];
 
-    if (selectedMembers.includes(ownerId)) {
+    if (
+      selectedMembers.includes(ownerId)
+    ) {
       return res.status(400).json({
-        message: "Project owner cannot be added as a member",
+        message:
+          "Project owner cannot be added as a member",
       });
     }
 
     if (selectedMembers.length > 0) {
       const users = await User.find({
-        _id: { $in: selectedMembers },
+        _id: {
+          $in: selectedMembers,
+        },
       }).select("_id");
 
-      if (users.length !== selectedMembers.length) {
+      if (
+        users.length !==
+        selectedMembers.length
+      ) {
         return res.status(400).json({
-          message: "One or more selected members do not exist",
+          message:
+            "One or more selected members do not exist",
         });
       }
     }
 
-    // -----------------------------
     // Create project
-    // -----------------------------
+    const project =
+      await Project.create({
+        title: title.trim(),
+        description: description.trim(),
+        status,
+        technologies:
+          technologies || [],
+        tasks: tasks || [],
+        owner: req.user.userId,
+        members: selectedMembers,
+      });
 
-    const project = await Project.create({
-      title: title.trim(),
-      description: description.trim(),
-      status,
-      technologies: technologies || [],
-      tasks: tasks || [],
-      owner: req.user.userId,
-      members: selectedMembers,
-    });
-
-    // -----------------------------
     // Create project activity
-    // -----------------------------
-
     await ProjectActivity.create({
       project: project._id,
       user: req.user.userId,
@@ -509,11 +701,15 @@ const createProject = async (req, res) => {
     });
 
     res.status(201).json({
-      message: "Project created successfully",
+      message:
+        "Project created successfully",
       project,
     });
   } catch (error) {
-    console.error("Create project error:", error);
+    console.error(
+      "Create project error:",
+      error
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -522,69 +718,83 @@ const createProject = async (req, res) => {
 };
 
 // GET ALL PROJECTS
-// GET ALL PROJECTS
-const getProjects = async (req, res) => {
+const getProjects = async (
+  req,
+  res
+) => {
   try {
     const userId = req.user.userId;
 
-    const projects = await Project.find({
-      $or: [
-        { owner: userId },
-        { members: userId }
-      ]
-    }).populate("members", "name email");
+    const projects =
+      await Project.find({
+        $or: [
+          { owner: userId },
+          { members: userId },
+        ],
+      }).populate(
+        "members",
+        "name email"
+      );
 
     res.status(200).json({
-      projects
+      projects,
     });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
-
-
 // GET SINGLE PROJECT
-// GET SINGLE PROJECT
-const getProjectById = async (req, res) => {
+const getProjectById = async (
+  req,
+  res
+) => {
   try {
-    const project = await Project.findOne({
-      _id: req.params.id,
-      $or: [
-        { owner: req.user.userId },
-        { members: req.user.userId }
-      ]
-    })
-      .populate("owner", "name userCode")
-      .populate("members", "name userCode");
+    const project =
+      await Project.findOne({
+        _id: req.params.id,
+        $or: [
+          { owner: req.user.userId },
+          { members: req.user.userId },
+        ],
+      })
+        .populate(
+          "owner",
+          "name userCode"
+        )
+        .populate(
+          "members",
+          "name userCode"
+        );
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found or you are not authorized to access it"
+        message:
+          "Project not found or you are not authorized to access it",
       });
     }
 
     res.status(200).json({
-      project
+      project,
     });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
-
-// UPDATE PROJECT
-// UPDATE PROJECT
 // UPDATE PROJECT - OWNER ONLY
-const updateProject = async (req, res) => {
+const updateProject = async (
+  req,
+  res
+) => {
   try {
     const {
       title,
@@ -594,110 +804,121 @@ const updateProject = async (req, res) => {
       members,
     } = req.body;
 
-    // -----------------------------
     // Validate project fields
-    // -----------------------------
-
     if (!title || !title.trim()) {
       return res.status(400).json({
-        message: "Project title is required",
+        message:
+          "Project title is required",
       });
     }
 
-    if (!description || !description.trim()) {
+    if (
+      !description ||
+      !description.trim()
+    ) {
       return res.status(400).json({
-        message: "Project description is required",
+        message:
+          "Project description is required",
       });
     }
 
     if (!Array.isArray(members)) {
       return res.status(400).json({
-        message: "Members must be an array",
+        message:
+          "Members must be an array",
       });
     }
 
-    // -----------------------------
     // Find project - OWNER ONLY
-    // -----------------------------
-
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
+    const project =
+      await Project.findOne({
+        _id: req.params.id,
+        owner: req.user.userId,
+      });
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found or you are not the owner",
+        message:
+          "Project not found or you are not the owner",
       });
     }
 
-    // -----------------------------
     // Prepare members
-    // -----------------------------
-
-    const ownerId = req.user.userId.toString();
+    const ownerId =
+      req.user.userId.toString();
 
     const selectedMembers = [
       ...new Set(
-        members.map((memberId) => memberId.toString())
+        members.map((memberId) =>
+          memberId.toString()
+        )
       ),
     ];
 
     // Owner cannot be added as a member
-    if (selectedMembers.includes(ownerId)) {
+    if (
+      selectedMembers.includes(ownerId)
+    ) {
       return res.status(400).json({
-        message: "Project owner cannot be added as a member",
+        message:
+          "Project owner cannot be added as a member",
       });
     }
 
-    // -----------------------------
     // Validate members exist
-    // -----------------------------
-
     if (selectedMembers.length > 0) {
       const users = await User.find({
-        _id: { $in: selectedMembers },
+        _id: {
+          $in: selectedMembers,
+        },
       }).select("_id");
 
-      if (users.length !== selectedMembers.length) {
+      if (
+        users.length !==
+        selectedMembers.length
+      ) {
         return res.status(400).json({
-          message: "One or more selected members do not exist",
+          message:
+            "One or more selected members do not exist",
         });
       }
     }
 
-    // -----------------------------
     // Detect member changes
-    // -----------------------------
+    const oldMemberIds =
+      project.members.map((member) =>
+        member.toString()
+      );
 
-    const oldMemberIds = project.members.map((member) =>
-      member.toString()
-    );
+    const addedMemberIds =
+      selectedMembers.filter(
+        (memberId) =>
+          !oldMemberIds.includes(
+            memberId
+          )
+      );
 
-    const addedMemberIds = selectedMembers.filter(
-      (memberId) => !oldMemberIds.includes(memberId)
-    );
+    const removedMemberIds =
+      oldMemberIds.filter(
+        (memberId) =>
+          !selectedMembers.includes(
+            memberId
+          )
+      );
 
-    const removedMemberIds = oldMemberIds.filter(
-      (memberId) => !selectedMembers.includes(memberId)
-    );
-
-    // -----------------------------
     // Update project
-    // -----------------------------
-
     project.title = title.trim();
-    project.description = description.trim();
+    project.description =
+      description.trim();
     project.status = status;
-    project.technologies = technologies || [];
-    project.members = selectedMembers;
+    project.technologies =
+      technologies || [];
+    project.members =
+      selectedMembers;
 
     await project.save();
 
-    // -----------------------------
     // Project activity
-    // -----------------------------
-
     await ProjectActivity.create({
       project: project._id,
       user: req.user.userId,
@@ -705,14 +926,14 @@ const updateProject = async (req, res) => {
       description: `Project "${project.title}" was updated`,
     });
 
-    // -----------------------------
     // Member activity
-    // -----------------------------
-
     if (addedMemberIds.length > 0) {
-      const addedUsers = await User.find({
-        _id: { $in: addedMemberIds },
-      }).select("name");
+      const addedUsers =
+        await User.find({
+          _id: {
+            $in: addedMemberIds,
+          },
+        }).select("name");
 
       for (const user of addedUsers) {
         await ProjectActivity.create({
@@ -725,9 +946,12 @@ const updateProject = async (req, res) => {
     }
 
     if (removedMemberIds.length > 0) {
-      const removedUsers = await User.find({
-        _id: { $in: removedMemberIds },
-      }).select("name");
+      const removedUsers =
+        await User.find({
+          _id: {
+            $in: removedMemberIds,
+          },
+        }).select("name");
 
       for (const user of removedUsers) {
         await ProjectActivity.create({
@@ -739,20 +963,30 @@ const updateProject = async (req, res) => {
       }
     }
 
-    // -----------------------------
     // Return populated project
-    // -----------------------------
-
-    const updatedProject = await Project.findById(project._id)
-      .populate("owner", "name userCode email")
-      .populate("members", "name userCode email");
+    const updatedProject =
+      await Project.findById(
+        project._id
+      )
+        .populate(
+          "owner",
+          "name userCode email"
+        )
+        .populate(
+          "members",
+          "name userCode email"
+        );
 
     res.status(200).json({
-      message: "Project updated successfully",
+      message:
+        "Project updated successfully",
       project: updatedProject,
     });
   } catch (error) {
-    console.error("Update project error:", error);
+    console.error(
+      "Update project error:",
+      error
+    );
 
     res.status(500).json({
       message: "Server error",
@@ -760,26 +994,24 @@ const updateProject = async (req, res) => {
   }
 };
 
-// ADD PROJECT TASK - OWNER ONLY
-
-
-// UPDATE PROJECT TASK - OWNER ONLY
-
-// DELETE PROJECT TASK - OWNER ONLY
-
 // GET PROJECT ACTIVITY
-const getProjectActivity = async (req, res) => {
+const getProjectActivity = async (
+  req,
+  res
+) => {
   try {
     const projectId = req.params.id;
 
     const page = Math.max(
-      parseInt(req.query.page, 10) || 1,
+      parseInt(req.query.page, 10) ||
+        1,
       1
     );
 
     const limit = Math.min(
       Math.max(
-        parseInt(req.query.limit, 10) || 10,
+        parseInt(req.query.limit, 10) ||
+          10,
         1
       ),
       50
@@ -788,13 +1020,14 @@ const getProjectActivity = async (req, res) => {
     const { date } = req.query;
 
     // Verify project access
-    const project = await Project.findOne({
-      _id: projectId,
-      $or: [
-        { owner: req.user.userId },
-        { members: req.user.userId },
-      ],
-    });
+    const project =
+      await Project.findOne({
+        _id: projectId,
+        $or: [
+          { owner: req.user.userId },
+          { members: req.user.userId },
+        ],
+      });
 
     if (!project) {
       return res.status(404).json({
@@ -803,25 +1036,33 @@ const getProjectActivity = async (req, res) => {
       });
     }
 
-    // Base filter
     const filter = {
       project: projectId,
     };
 
-    // Optional date filter
     if (date) {
-      const selectedDate = new Date(
-        `${date}T00:00:00.000`
-      );
+      const selectedDate =
+        new Date(
+          `${date}T00:00:00.000`
+        );
 
-      if (Number.isNaN(selectedDate.getTime())) {
+      if (
+        Number.isNaN(
+          selectedDate.getTime()
+        )
+      ) {
         return res.status(400).json({
-          message: "Invalid date format",
+          message:
+            "Invalid date format",
         });
       }
 
-      const nextDate = new Date(selectedDate);
-      nextDate.setDate(nextDate.getDate() + 1);
+      const nextDate =
+        new Date(selectedDate);
+
+      nextDate.setDate(
+        nextDate.getDate() + 1
+      );
 
       filter.createdAt = {
         $gte: selectedDate,
@@ -829,10 +1070,10 @@ const getProjectActivity = async (req, res) => {
       };
     }
 
-    // Count AFTER applying filter
-    const total = await ProjectActivity.countDocuments(
-      filter
-    );
+    const total =
+      await ProjectActivity.countDocuments(
+        filter
+      );
 
     const totalPages =
       total === 0
@@ -841,16 +1082,28 @@ const getProjectActivity = async (req, res) => {
 
     const currentPage =
       totalPages > 0
-        ? Math.min(page, totalPages)
+        ? Math.min(
+            page,
+            totalPages
+          )
         : 1;
 
-    const skip = (currentPage - 1) * limit;
+    const skip =
+      (currentPage - 1) * limit;
 
-    const activities = await ProjectActivity.find(filter)
-      .populate("user", "name userCode email")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const activities =
+      await ProjectActivity.find(
+        filter
+      )
+        .populate(
+          "user",
+          "name userCode email"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit);
 
     res.status(200).json({
       activities,
@@ -859,8 +1112,11 @@ const getProjectActivity = async (req, res) => {
         limit,
         total,
         totalPages,
-        hasNextPage: currentPage < totalPages,
-        hasPreviousPage: currentPage > 1,
+        hasNextPage:
+          currentPage <
+          totalPages,
+        hasPreviousPage:
+          currentPage > 1,
       },
     });
   } catch (error) {
@@ -870,45 +1126,54 @@ const getProjectActivity = async (req, res) => {
     );
 
     res.status(500).json({
-      message: "Unable to load project activity",
+      message:
+        "Unable to load project activity",
     });
   }
 };
 
-
 // DELETE PROJECT ACTIVITY - OWNER ONLY
-const deleteProjectActivity = async (req, res) => {
+const deleteProjectActivity = async (
+  req,
+  res
+) => {
   try {
-    const { id, activityId } = req.params;
+    const { id, activityId } =
+      req.params;
 
-    // Find project and verify owner
-    const project = await Project.findOne({
-      _id: id,
-      owner: req.user.userId,
-    });
+    const project =
+      await Project.findOne({
+        _id: id,
+        owner: req.user.userId,
+      });
 
     if (!project) {
       return res.status(403).json({
-        message: "Only the project owner can delete activity logs",
+        message:
+          "Only the project owner can delete activity logs",
       });
     }
 
-    // Find activity belonging to this project
-    const activity = await ProjectActivity.findOne({
-      _id: activityId,
-      project: id,
-    });
+    const activity =
+      await ProjectActivity.findOne({
+        _id: activityId,
+        project: id,
+      });
 
     if (!activity) {
       return res.status(404).json({
-        message: "Activity log not found",
+        message:
+          "Activity log not found",
       });
     }
 
-    await ProjectActivity.findByIdAndDelete(activityId);
+    await ProjectActivity.findByIdAndDelete(
+      activityId
+    );
 
     return res.status(200).json({
-      message: "Activity log deleted successfully",
+      message:
+        "Activity log deleted successfully",
       activityId,
     });
   } catch (error) {
@@ -918,43 +1183,58 @@ const deleteProjectActivity = async (req, res) => {
     );
 
     return res.status(500).json({
-      message: "Unable to delete activity log",
+      message:
+        "Unable to delete activity log",
     });
   }
 };
+
 // DELETE PROJECT
-const deleteProject = async (req, res) => {
+const deleteProject = async (
+  req,
+  res
+) => {
   try {
-    const project = await Project.findOneAndDelete({
-      _id: req.params.id,
-      owner: req.user.userId
-    });
+    const project =
+      await Project.findOneAndDelete({
+        _id: req.params.id,
+        owner: req.user.userId,
+      });
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found"
+        message:
+          "Project not found",
       });
     }
 
     res.status(200).json({
-      message: "Project deleted successfully"
+      message:
+        "Project deleted successfully",
     });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
 // Get all registered users for project member selection
-const getUsersForMemberSelection = async (req, res) => {
+const getUsersForMemberSelection = async (
+  req,
+  res
+) => {
   try {
     const users = await User.find({
-      _id: { $ne: req.user.userId },
+      _id: {
+        $ne: req.user.userId,
+      },
     })
-      .select("_id userCode name email")
+      .select(
+        "_id userCode name email"
+      )
       .sort({ name: 1 });
 
     res.status(200).json({
@@ -962,172 +1242,219 @@ const getUsersForMemberSelection = async (req, res) => {
       users,
     });
   } catch (error) {
-    console.error("Failed to fetch users:", error);
+    console.error(
+      "Failed to fetch users:",
+      error
+    );
 
     res.status(500).json({
-      message: "Failed to fetch registered users",
+      message:
+        "Failed to fetch registered users",
       error: error.message,
     });
   }
 };
 
 // ADD MEMBER TO PROJECT
-const addMember = async (req, res) => {
+const addMember = async (
+  req,
+  res
+) => {
   try {
     const { userId } = req.body;
 
     if (!userId) {
       return res.status(400).json({
-        message: "User ID is required"
+        message: "User ID is required",
       });
     }
 
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId
-    }).populate("members", "name email");
+    const project =
+      await Project.findOne({
+        _id: req.params.id,
+        owner: req.user.userId,
+      }).populate(
+        "members",
+        "name email"
+      );
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found or you are not the owner"
+        message:
+          "Project not found or you are not the owner",
       });
     }
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
-        message: "User not found"
+        message: "User not found",
       });
     }
 
-    if (project.owner.toString() === userId) {
-     return res.status(400).json({
-     message: "Project owner is already part of the project"
-  });
-}
+    if (
+      project.owner.toString() ===
+      userId
+    ) {
+      return res.status(400).json({
+        message:
+          "Project owner is already part of the project",
+      });
+    }
 
-    const alreadyMember = project.members.some(
-  (member) => member._id.toString() === userId
-);
+    const alreadyMember =
+      project.members.some(
+        (member) =>
+          member._id.toString() ===
+          userId
+      );
 
     if (alreadyMember) {
       return res.status(400).json({
-        message: "User is already a project member"
+        message:
+          "User is already a project member",
       });
     }
-
 
     project.members.push(userId);
 
     await project.save();
 
     await ProjectActivity.create({
-  project: project._id,
-  user: req.user.userId,
-  action: "MEMBER_ADDED",
-  description: `${user.name} was added to the project`,
-});
-
-
-    res.status(200).json({
-      message: "Member added successfully",
-      project
+      project: project._id,
+      user: req.user.userId,
+      action: "MEMBER_ADDED",
+      description: `${user.name} was added to the project`,
     });
 
+    res.status(200).json({
+      message:
+        "Member added successfully",
+      project,
+    });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
 // REMOVE MEMBER FROM PROJECT
-const removeMember = async (req, res) => {
+const removeMember = async (
+  req,
+  res
+) => {
   try {
     const { userId } = req.params;
 
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.user.userId
-    }).populate("members", "name email");
-
+    const project =
+      await Project.findOne({
+        _id: req.params.id,
+        owner: req.user.userId,
+      }).populate(
+        "members",
+        "name email"
+      );
 
     if (!project) {
       return res.status(404).json({
-        message: "Project not found or you are not the owner"
+        message:
+          "Project not found or you are not the owner",
       });
     }
-     if (userId === project.owner.toString()) {
-  return res.status(400).json({
-    message: "Project owner cannot be removed"
-  });
-}
 
-    const isMember = project.members.some(
-  (member) => member._id.toString() === userId
-);
+    if (
+      userId ===
+      project.owner.toString()
+    ) {
+      return res.status(400).json({
+        message:
+          "Project owner cannot be removed",
+      });
+    }
+
+    const isMember =
+      project.members.some(
+        (member) =>
+          member._id.toString() ===
+          userId
+      );
+
     if (!isMember) {
       return res.status(404).json({
-        message: "User is not a member of this project"
+        message:
+          "User is not a member of this project",
       });
     }
 
-   const removedMember = project.members.find(
-  (member) => member._id.toString() === userId
-);
+    const removedMember =
+      project.members.find(
+        (member) =>
+          member._id.toString() ===
+          userId
+      );
 
-    project.members = project.members.filter(
-      (memberId) => memberId.toString() !== userId
-    );
+    project.members =
+      project.members.filter(
+        (memberId) =>
+          memberId.toString() !==
+          userId
+      );
 
     await project.save();
 
     await ProjectActivity.create({
-  project: project._id,
-  user: req.user.userId,
-  action: "MEMBER_REMOVED",
-  description: `${removedMember.name} was removed from the project`,
-});
+      project: project._id,
+      user: req.user.userId,
+      action: "MEMBER_REMOVED",
+      description: `${removedMember.name} was removed from the project`,
+    });
 
     res.status(200).json({
-      message: "Member removed successfully",
-      project
+      message:
+        "Member removed successfully",
+      project,
     });
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
-      message: "Server error"
+      message: "Server error",
     });
   }
 };
 
 // SEARCH REGISTERED USERS FOR PROJECT MEMBERS
-// SEARCH REGISTERED USERS FOR PROJECT MEMBERS
-const searchUsers = async (req, res) => {
+const searchUsers = async (
+  req,
+  res
+) => {
   try {
-    const { search = "" } = req.query;
+    const { search = "" } =
+      req.query;
 
-    const searchValue = search.trim();
+    const searchValue =
+      search.trim();
 
     const users = await User.find({
       $or: [
         {
           name: {
             $regex: searchValue,
-            $options: "i"
-          }
+            $options: "i",
+          },
         },
         {
           userCode: {
             $regex: searchValue,
-            $options: "i"
-          }
-        }
-      ]
+            $options: "i",
+          },
+        },
+      ],
     })
       .select("name userCode")
       .limit(10);
@@ -1136,13 +1463,18 @@ const searchUsers = async (req, res) => {
       users,
     });
   } catch (error) {
-    console.error("Failed to search users:", error);
+    console.error(
+      "Failed to search users:",
+      error
+    );
 
     res.status(500).json({
-      message: "Unable to search users",
+      message:
+        "Unable to search users",
     });
   }
 };
+
 module.exports = {
   createProject,
   getProjects,

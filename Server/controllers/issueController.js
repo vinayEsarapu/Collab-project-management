@@ -3,7 +3,6 @@ const Project = require("../models/Project");
 const { createActivity } = require("../services/activityService");
 
 // Create an issue
-// Create an issue
 const createIssue = async (req, res) => {
   try {
     const {
@@ -14,8 +13,8 @@ const createIssue = async (req, res) => {
       labels,
       project,
       task,
-      assignedTo,
-      referredTo,
+      assignedTo: requestedAssignedTo,
+      referredTo: requestedReferredTo,
     } = req.body;
 
     const projectDoc = await Project.findById(project);
@@ -26,18 +25,45 @@ const createIssue = async (req, res) => {
       });
     }
 
-    let taskData = null;
+    let assignedTo = requestedAssignedTo || null;
+    let referredTo = requestedReferredTo || null;
 
+    /*
+     * TASK-LEVEL ISSUE
+     *
+     * Task issues are automatically assigned to
+     * the user assigned to the task.
+     *
+     * They cannot be manually assigned or referred.
+     */
     if (task) {
-      taskData = projectDoc.tasks.id(task);
+  const taskDoc = projectDoc.tasks.id(task);
 
-      if (!taskData) {
-        return res.status(404).json({
-          message: "Task not found in this project",
-        });
-      }
-    }
+  if (!taskDoc) {
+    return res.status(404).json({
+      message: "Task not found.",
+    });
+  }
 
+  // Only the user assigned to the task can create
+  // issues under that task.
+  if (
+    !taskDoc.assignedTo ||
+    taskDoc.assignedTo.toString() !== req.user.userId.toString()
+  ) {
+    return res.status(403).json({
+      message:
+        "Only the member assigned to this task can create task issues.",
+    });
+  }
+
+  // Task-level issue is automatically assigned
+  // to the task's assigned member.
+  assignedTo = taskDoc.assignedTo;
+
+  // Task-level issues cannot be referred.
+  referredTo = null;
+}
     const issue = await Issue.create({
       title,
       description,
@@ -47,12 +73,8 @@ const createIssue = async (req, res) => {
       project,
       task: task || null,
       createdBy: req.user.userId,
-
-      // Actual assignment
-      assignedTo: assignedTo || null,
-
-      // Referral
-      referredTo: referredTo || null,
+      assignedTo,
+      referredTo,
     });
 
     await createActivity({
@@ -94,7 +116,6 @@ const createIssue = async (req, res) => {
   }
 };
 
-
 const getIssuesByTask = async (req, res, next) => {
   try {
     const { taskId } = req.params;
@@ -104,6 +125,7 @@ const getIssuesByTask = async (req, res, next) => {
     })
       .populate("owner", "name email")
       .populate("members", "name email")
+       .populate("tasks.assignedTo", "name email");
 
     if (!project) {
       return res.status(404).json({
@@ -230,7 +252,8 @@ const updateIssue = async (req, res) => {
       status,
       priority,
       labels,
-      assignedTo,
+      assignedTo: requestedAssignedTo,
+      referredTo: requestedReferredTo,
     } = req.body;
 
     const issue = await Issue.findById(req.params.id);
@@ -241,15 +264,54 @@ const updateIssue = async (req, res) => {
       });
     }
 
-    // Store old values before making changes
+    const isTaskIssue = Boolean(issue.task);
+
+    /*
+     * For task-level issues, assignment comes from
+     * the task and cannot be manually changed.
+     */
+    let assignedTo = requestedAssignedTo;
+    let referredTo = requestedReferredTo;
+
+    if (isTaskIssue) {
+      const projectDoc = await Project.findById(issue.project);
+
+      if (!projectDoc) {
+        return res.status(404).json({
+          message: "Associated project not found",
+        });
+      }
+
+      const taskDoc = projectDoc.tasks.id(issue.task);
+
+      if (!taskDoc) {
+        return res.status(404).json({
+          message: "Associated task not found",
+        });
+      }
+
+      // Always derive assignment from the task.
+      assignedTo = taskDoc.assignedTo || null;
+
+      // Task issues cannot be referred.
+      referredTo = null;
+    }
+
+    // Store old values before making changes.
     const oldStatus = issue.status;
     const oldPriority = issue.priority;
+
     const oldAssignedTo = issue.assignedTo
       ? issue.assignedTo.toString()
       : null;
 
+    const oldReferredTo = issue.referredTo
+      ? issue.referredTo.toString()
+      : null;
+
     const titleChanged =
-      title !== undefined && title !== issue.title;
+      title !== undefined &&
+      title !== issue.title;
 
     const descriptionChanged =
       description !== undefined &&
@@ -267,76 +329,100 @@ const updateIssue = async (req, res) => {
       priority !== undefined &&
       priority !== oldPriority;
 
-    const newAssignedTo =
-  assignedTo !== undefined
-    ? assignedTo || null
-    : oldAssignedTo;
-
-  const normalizedNewAssignedTo = newAssignedTo
-   ? newAssignedTo.toString()
-   : null;
-
-  const assignmentChanged =
-    assignedTo !== undefined &&
-    normalizedNewAssignedTo !== oldAssignedTo;
-
-    // Existing issue update logic
-    issue.title = title ?? issue.title;
-    issue.description = description ?? issue.description;
-    issue.status = status ?? issue.status;
-    issue.priority = priority ?? issue.priority;
-    issue.labels = labels ?? issue.labels;
-    issue.assignedTo =
-      assignedTo !== undefined
-        ? assignedTo || null
+    /*
+     * Determine the new assignment.
+     *
+     * Task issue:
+     *   always use task assignment.
+     *
+     * Project issue:
+     *   only change if assignedTo was supplied.
+     */
+    const newAssignedTo = isTaskIssue
+      ? assignedTo
+      : requestedAssignedTo !== undefined
+        ? requestedAssignedTo || null
         : issue.assignedTo;
 
-   const oldReferredTo = issue.referredTo
-  ? issue.referredTo.toString()
-  : null;
+    const normalizedNewAssignedTo = newAssignedTo
+      ? newAssignedTo.toString()
+      : null;
 
-const newReferredTo =
-  referredTo !== undefined
-    ? referredTo || null
-    : oldReferredTo;
+    const assignmentChanged =
+      normalizedNewAssignedTo !== oldAssignedTo;
 
-const normalizedNewReferredTo = newReferredTo
-  ? newReferredTo.toString()
-  : null;
+    /*
+     * Determine referral.
+     *
+     * Task issue:
+     *   always null.
+     *
+     * Project issue:
+     *   update only when referredTo was supplied.
+     */
+    const newReferredTo = isTaskIssue
+      ? null
+      : requestedReferredTo !== undefined
+        ? requestedReferredTo || null
+        : issue.referredTo;
 
-const referralChanged =
-  referredTo !== undefined &&
-  normalizedNewReferredTo !== oldReferredTo;
+    const normalizedNewReferredTo = newReferredTo
+      ? newReferredTo.toString()
+      : null;
 
-issue.referredTo =
-  referredTo !== undefined
-    ? referredTo || null
-    : issue.referredTo;     
+    const referralChanged =
+      normalizedNewReferredTo !== oldReferredTo;
+
+    // Update normal issue fields.
+    issue.title =
+      title ?? issue.title;
+
+    issue.description =
+      description ?? issue.description;
+
+    issue.status =
+      status ?? issue.status;
+
+    issue.priority =
+      priority ?? issue.priority;
+
+    issue.labels =
+      labels ?? issue.labels;
+
+    // Assignment.
+    issue.assignedTo = newAssignedTo;
+
+    // Referral.
+    issue.referredTo = newReferredTo;
 
     await issue.save();
 
-    if (referralChanged) {
-  await createActivity({
-    issue: issue._id,
-    project: issue.project,
-    task: issue.task || null,
-    user: req.user.userId,
-    action: "ISSUE_UPDATED",
-    details: {
-      referredTo: normalizedNewReferredTo,
-      referralChanged: true,
-    },
-  });
-}
     /*
-     * Create activity records
+     * Referral activity
+     *
+     * Only project-level issues can be referred.
      */
+    if (!isTaskIssue && referralChanged) {
+      await createActivity({
+        issue: issue._id,
+        project: issue.project,
+        task: issue.task || null,
+        user: req.user.userId,
+        action: "ISSUE_UPDATED",
+        details: {
+          referredTo: normalizedNewReferredTo,
+          referralChanged: true,
+        },
+      });
+    }
 
-    // Status changed
+    /*
+     * Status changed
+     */
     if (statusChanged) {
       await createActivity({
         issue: issue._id,
-         task: issue.task || null,
+        task: issue.task || null,
         project: issue.project,
         user: req.user.userId,
         action: "STATUS_CHANGED",
@@ -347,11 +433,13 @@ issue.referredTo =
       });
     }
 
-    // Priority changed
+    /*
+     * Priority changed
+     */
     if (priorityChanged) {
       await createActivity({
         issue: issue._id,
-          task: issue.task || null,
+        task: issue.task || null,
         project: issue.project,
         user: req.user.userId,
         action: "PRIORITY_CHANGED",
@@ -362,45 +450,53 @@ issue.referredTo =
       });
     }
 
-    // Assignment changed
-    // Assignment changed
+    /*
+     * Assignment changed
+     *
+     * This will normally apply to project-level issues.
+     *
+     * For task issues, it can happen legitimately if the
+     * task itself was reassigned before this update.
+     */
     if (assignmentChanged) {
-  if (!normalizedNewAssignedTo) {
-    await createActivity({
-      issue: issue._id,
-      project: issue.project,
-      task: issue.task || null,
-      user: req.user.userId,
-      action: "ISSUE_UNASSIGNED",
-      details: {},
-    });
-  } else if (!oldAssignedTo) {
-    await createActivity({
-      issue: issue._id,
-      project: issue.project,
-      task: issue.task || null,
-      user: req.user.userId,
-      action: "ISSUE_ASSIGNED",
-      details: {
-         assignedTo: normalizedNewAssignedTo,
-      },
-    });
-  } else {
-    await createActivity({
-      issue: issue._id,
-      project: issue.project,
-      task: issue.task || null,
-      user: req.user.userId,
-      action: "ISSUE_REASSIGNED",
-      details: {
-         from: oldAssignedTo,
-        to: normalizedNewAssignedTo,
-      },
-    });
-  }
-}
+      if (!normalizedNewAssignedTo) {
+        await createActivity({
+          issue: issue._id,
+          project: issue.project,
+          task: issue.task || null,
+          user: req.user.userId,
+          action: "ISSUE_UNASSIGNED",
+          details: {},
+        });
+      } else if (!oldAssignedTo) {
+        await createActivity({
+          issue: issue._id,
+          project: issue.project,
+          task: issue.task || null,
+          user: req.user.userId,
+          action: "ISSUE_ASSIGNED",
+          details: {
+            assignedTo: normalizedNewAssignedTo,
+          },
+        });
+      } else {
+        await createActivity({
+          issue: issue._id,
+          project: issue.project,
+          task: issue.task || null,
+          user: req.user.userId,
+          action: "ISSUE_REASSIGNED",
+          details: {
+            from: oldAssignedTo,
+            to: normalizedNewAssignedTo,
+          },
+        });
+      }
+    }
 
-    // Other issue information changed
+    /*
+     * Other issue information changed
+     */
     if (
       titleChanged ||
       descriptionChanged ||
@@ -409,7 +505,7 @@ issue.referredTo =
       await createActivity({
         issue: issue._id,
         project: issue.project,
-         task: issue.task || null,
+        task: issue.task || null,
         user: req.user.userId,
         action: "ISSUE_UPDATED",
         details: {
@@ -424,7 +520,7 @@ issue.referredTo =
       .populate("project", "name description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
-       .populate("referredTo", "name email");;
+      .populate("referredTo", "name email");
 
     res.status(200).json({
       message: "Issue updated successfully",
@@ -436,9 +532,7 @@ issue.referredTo =
       error: error.message,
     });
   }
-
 };
-
 
 // Delete an issue
 const deleteIssue = async (req, res) => {
@@ -489,6 +583,7 @@ const getIssuesByProject = async (req, res) => {
       .populate("project", "name title description")
       .populate("createdBy", "name email")
       .populate("assignedTo", "name email")
+       .populate("referredTo", "name email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({

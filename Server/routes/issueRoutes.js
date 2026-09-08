@@ -52,7 +52,6 @@ router.put(
   authMiddleware,
   checkTaskIssueAccess,
   authorizeIssueEdit,
-  authorizeIssueAssignment,
   updateIssueValidator,
   validate,
   updateIssue

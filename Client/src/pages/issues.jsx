@@ -5,6 +5,7 @@ import IssueForm from "../components/issues/issueform";
 import {
   createIssue,
   getIssuesByProject,
+   updateIssue,
 } from "../services/issueservices";
 import { Link, useParams } from "react-router-dom";
 import { getProjectById } from "../services/projectservices";
@@ -16,6 +17,7 @@ function Issues() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingIssue, setEditingIssue] = useState(null);
   const [error, setError] = useState("");
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -81,6 +83,27 @@ function Issues() {
         error.response?.data?.error ||
       error.response?.data?.message ||
       "Failed to create issue. Please try again."
+    );
+
+    throw error;
+  }
+};
+
+const handleUpdateIssue = async (issueData) => {
+  try {
+    setError("");
+
+    await updateIssue(editingIssue._id, issueData);
+
+    setEditingIssue(null);
+    setShowForm(false);
+
+    await fetchIssues();
+  } catch (error) {
+    setError(
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to update issue. Please try again."
     );
 
     throw error;
@@ -279,15 +302,23 @@ function Issues() {
       </div>
 
       {/* Create form */}
+      {/* Create form */}
       {showForm && (
         <IssueForm
+          project={project}
           projectId={projectId}
-           project={project}
-            canAssign={isProjectOwner}
-          //issue={issue}
           members={project?.members || []}
-          onSubmit={handleCreateIssue}
-          onClose={() => setShowForm(false)}
+          issue={editingIssue}
+          canAssign={isProjectOwner}
+          onSubmit={
+            editingIssue
+              ? handleUpdateIssue
+              : handleCreateIssue
+          }
+          onClose={() => {
+            setEditingIssue(null);
+            setShowForm(false);
+          }}
         />
       )}
     </div>
@@ -295,3 +326,4 @@ function Issues() {
 }
 
 export default Issues;
+

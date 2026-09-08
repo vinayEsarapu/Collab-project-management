@@ -310,7 +310,7 @@ const fetchIssue = async () => {
   taskId
     ? `/projects/${projectId}/tasks/${taskId}/issues`
     : `/projects/${projectId}/issues`
-}v
+}
           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
          >
            ← Back to Issues
@@ -401,32 +401,18 @@ const fetchIssue = async () => {
               </div>
 
               {/* Assignee */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-    <p className="text-xs text-slate-500">
-      Referred To
-    </p>
+            {/* Assigned To */}
+            <div>
+  <p className="text-xs text-slate-500">
+    Assigned To
+  </p>
 
-    <p className="mt-1 text-sm font-medium text-white">
-      {issue.referredTo
-        ? issue.referredTo.name || issue.referredTo.email
-        : "No referral"}
-    </p>
-  </div>
-
-  <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-    <p className="text-xs text-slate-500">
-      Assigned To
-    </p>
-
-    <p className="mt-1 text-sm font-medium text-white">
-      {issue.assignedTo
-        ? issue.assignedTo.name || issue.assignedTo.email
-        : "Unassigned"}
-    </p>
-  </div>
+  <p className="mt-1 text-sm font-medium text-white">
+    {issue.assignedTo?.name ||
+      issue.assignedTo?.email ||
+      "Unassigned"}
+  </p>
 </div>
-
               {/* Created By */}
               <div>
                 <p className="text-xs text-slate-500">
@@ -477,7 +463,7 @@ const fetchIssue = async () => {
 
        {/* Comments */}
 
-<section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
+<section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
   <div>
     <h2 className="text-lg font-semibold text-white">
       Post Comments
@@ -542,7 +528,7 @@ const fetchIssue = async () => {
 >
   View Activity
 </Link>
-          <button
+          {/* <button
   onClick={() =>
     navigate(
       taskId
@@ -553,7 +539,7 @@ const fetchIssue = async () => {
   className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
 >
   Back to Issues
-</button>
+</button> */}
           {isOwner && (
           <button
             onClick={()=>setShowDeleteConfirm(true)}
@@ -575,12 +561,14 @@ const fetchIssue = async () => {
       </div>
       {showEditForm && (
        <IssueForm
-        projectId={projectId}
-        issue={issue}
-         canAssign={isOwner}
-        members={project?.members || []}
-        onSubmit={handleUpdateIssue}
-        onClose={() => setShowEditForm(false)}
+         project={project}
+    projectId={projectId}
+    taskId={taskId}
+    issue={issue}
+    canAssign={taskId ? false : isOwner}
+    members={taskId ? [] : project?.members || []}
+    onSubmit={handleUpdateIssue}
+    onClose={() => setShowEditForm(false)}
       />
 )}
 

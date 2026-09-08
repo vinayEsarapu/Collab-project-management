@@ -208,5 +208,11 @@ export const deleteProjectComment = async (
 
   return response.data;
 };
+
+export const deleteProject = async (projectId) => {
+  const response = await api.delete(`/projects/${projectId}`);
+
+  return response.data;
+};
  
 //export default projectService;

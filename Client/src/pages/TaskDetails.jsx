@@ -24,11 +24,11 @@ function TaskDetails() {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [assignedTo, setAssignedTo] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("Planning");
   const [priority, setPriority] = useState("Medium");
-  const [assignedTo, setAssignedTo] = useState("");
 
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
@@ -64,6 +64,7 @@ function TaskDetails() {
       setDescription(taskData.description || "");
       setStatus(taskData.status || "Planning");
       setPriority(taskData.priority || "Medium");
+
       setAssignedTo(
         taskData.assignedTo?._id ||
           taskData.assignedTo ||
@@ -97,6 +98,7 @@ function TaskDetails() {
     setDescription(task.description || "");
     setStatus(task.status || "Planning");
     setPriority(task.priority || "Medium");
+
     setAssignedTo(
       task.assignedTo?._id ||
         task.assignedTo ||
@@ -113,6 +115,7 @@ function TaskDetails() {
     setDescription(task.description || "");
     setStatus(task.status || "Planning");
     setPriority(task.priority || "Medium");
+
     setAssignedTo(
       task.assignedTo?._id ||
         task.assignedTo ||
@@ -151,12 +154,10 @@ function TaskDetails() {
           status,
           priority,
 
-          // Only owner is allowed to change this.
-          // The backend also enforces this.
+          // Only project owner can change assignment
           ...(isOwner
             ? {
-                assignedTo:
-                  assignedTo || null,
+                assignedTo: assignedTo || null,
               }
             : {}),
         }
@@ -165,15 +166,10 @@ function TaskDetails() {
       setTask(updatedTask);
 
       setTitle(updatedTask.title || "");
-      setDescription(
-        updatedTask.description || ""
-      );
-      setStatus(
-        updatedTask.status || "Planning"
-      );
-      setPriority(
-        updatedTask.priority || "Medium"
-      );
+      setDescription(updatedTask.description || "");
+      setStatus(updatedTask.status || "Planning");
+      setPriority(updatedTask.priority || "Medium");
+
       setAssignedTo(
         updatedTask.assignedTo?._id ||
           updatedTask.assignedTo ||
@@ -202,40 +198,16 @@ function TaskDetails() {
       return "Unassigned";
     }
 
-    return (
-      task.assignedTo.name ||
-      "Unknown user"
-    );
-  };
-
-  const getProjectMemberOptions = () => {
-    const users = [];
-
-    if (project?.owner) {
-      users.push(project.owner);
+    if (typeof task.assignedTo === "object") {
+      return task.assignedTo.name || "Unknown user";
     }
 
-    if (project?.members) {
-      users.push(...project.members);
-    }
-
-    const uniqueUsers = [];
-    const seenIds = new Set();
-
-    users.forEach((member) => {
-      const memberId = (
-        member._id || member
-      ).toString();
-
-      if (!seenIds.has(memberId)) {
-        seenIds.add(memberId);
-        uniqueUsers.push(member);
-      }
-    });
-
-    return uniqueUsers;
+    return "Assigned user";
   };
 
+  /*
+   * Loading state
+   */
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -252,6 +224,9 @@ function TaskDetails() {
     );
   }
 
+  /*
+   * Error state
+   */
   if (error || !task || !project) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -268,9 +243,7 @@ function TaskDetails() {
             <button
               type="button"
               onClick={() =>
-                navigate(
-                  `/projects/${id}/tasks`
-                )
+                navigate(`/projects/${id}/tasks`)
               }
               className="mt-6 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
             >
@@ -282,6 +255,9 @@ function TaskDetails() {
     );
   }
 
+  /*
+   * Main page
+   */
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -290,9 +266,7 @@ function TaskDetails() {
         <button
           type="button"
           onClick={() =>
-            navigate(
-              `/projects/${id}/tasks`
-            )
+            navigate(`/projects/${id}/tasks`)
           }
           className="mb-8 text-sm text-slate-400 transition-colors hover:text-white"
         >
@@ -342,162 +316,169 @@ function TaskDetails() {
           </div>
         )}
 
-        {/* Edit Form */}
-        {isEditing ? (
-          <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        {/* Edit Task Modal */}
+        {isEditing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl sm:p-8">
 
-            <div>
-              <h2 className="text-lg font-semibold">
-                Edit Task
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-400">
-                Update the task details.
-              </p>
-            </div>
-
-            {formError && (
-              <div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
-                {formError}
-              </div>
-            )}
-
-            <div className="mt-6 grid gap-5">
-
-              {/* Title */}
-              <div>
-                <label
-                  htmlFor="taskTitle"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Task Title
-                </label>
-
-                <input
-                  id="taskTitle"
-                  type="text"
-                  value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    setFormError("");
-                  }}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  htmlFor="taskDescription"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Description
-                </label>
-
-                <textarea
-                  id="taskDescription"
-                  value={description}
-                  onChange={(event) => {
-                    setDescription(
-                      event.target.value
-                    );
-                    setFormError("");
-                  }}
-                  rows={5}
-                  className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-                />
-              </div>
-
-              {/* Status + Priority */}
-              <div className="grid gap-5 sm:grid-cols-2">
-
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <label
-                    htmlFor="taskStatus"
-                    className="mb-2 block text-sm font-medium text-slate-200"
-                  >
-                    Status
-                  </label>
+                  <h2 className="text-xl font-semibold text-white sm:text-2xl">
+                    Edit Task
+                  </h2>
 
-                  <select
-                    id="taskStatus"
-                    value={status}
-                    onChange={(event) =>
-                      setStatus(
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-                  >
-                    <option value="Planning">
-                      Planning
-                    </option>
-
-                    <option value="In Progress">
-                      In Progress
-                    </option>
-
-                    <option value="Completed">
-                      Completed
-                    </option>
-                  </select>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Update the task details.
+                  </p>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="taskPriority"
-                    className="mb-2 block text-sm font-medium text-slate-200"
-                  >
-                    Priority
-                  </label>
-
-                  <select
-                    id="taskPriority"
-                    value={priority}
-                    onChange={(event) =>
-                      setPriority(
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-                  >
-                    <option value="Low">
-                      Low
-                    </option>
-
-                    <option value="Medium">
-                      Medium
-                    </option>
-
-                    <option value="High">
-                      High
-                    </option>
-
-                    <option value="Critical">
-                      Critical
-                    </option>
-                  </select>
-                </div>
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={isUpdating}
+                  className="rounded-lg px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Assignment */}
-              <div>
-                <label
-                  htmlFor="taskAssignee"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Assign To
-                </label>
+              {/* Form Error */}
+              {formError && (
+                <div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+                  {formError}
+                </div>
+              )}
 
-                {isOwner ? (
-                  <>
+              <div className="mt-6 grid gap-5">
+
+                {/* Title */}
+                <div>
+                  <label
+                    htmlFor="taskTitle"
+                    className="mb-2 block text-sm font-medium text-slate-200"
+                  >
+                    Task Title
+                  </label>
+
+                  <input
+                    id="taskTitle"
+                    type="text"
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setFormError("");
+                    }}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label
+                    htmlFor="taskDescription"
+                    className="mb-2 block text-sm font-medium text-slate-200"
+                  >
+                    Description
+                  </label>
+
+                  <textarea
+                    id="taskDescription"
+                    value={description}
+                    onChange={(event) => {
+                      setDescription(event.target.value);
+                      setFormError("");
+                    }}
+                    rows={5}
+                    className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
+                  />
+                </div>
+
+                {/* Status + Priority */}
+                <div className="grid gap-5 sm:grid-cols-2">
+
+                  {/* Status */}
+                  <div>
+                    <label
+                      htmlFor="taskStatus"
+                      className="mb-2 block text-sm font-medium text-slate-200"
+                    >
+                      Status
+                    </label>
+
+                    <select
+                      id="taskStatus"
+                      value={status}
+                      onChange={(event) =>
+                        setStatus(event.target.value)
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+                    >
+                      <option value="Planning">
+                        Planning
+                      </option>
+
+                      <option value="In Progress">
+                        In Progress
+                      </option>
+
+                      <option value="Completed">
+                        Completed
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label
+                      htmlFor="taskPriority"
+                      className="mb-2 block text-sm font-medium text-slate-200"
+                    >
+                      Priority
+                    </label>
+
+                    <select
+                      id="taskPriority"
+                      value={priority}
+                      onChange={(event) =>
+                        setPriority(event.target.value)
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+                    >
+                      <option value="Low">
+                        Low
+                      </option>
+
+                      <option value="Medium">
+                        Medium
+                      </option>
+
+                      <option value="High">
+                        High
+                      </option>
+
+                      <option value="Critical">
+                        Critical
+                      </option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Assignment */}
+                {isOwner && (
+                  <div>
+                    <label
+                      htmlFor="taskAssignee"
+                      className="mb-2 block text-sm font-medium text-slate-200"
+                    >
+                      Assign To
+                    </label>
+
                     <select
                       id="taskAssignee"
                       value={assignedTo}
                       onChange={(event) =>
-                        setAssignedTo(
-                          event.target.value
-                        )
+                        setAssignedTo(event.target.value)
                       }
                       className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
                     >
@@ -505,49 +486,66 @@ function TaskDetails() {
                         Unassigned
                       </option>
 
-                      {getProjectMemberOptions().map(
-                        (member) => {
-                          const memberId =
-                            (
-                              member._id ||
-                              member
+                      {[
+                        project.owner,
+                        ...(project.members || []),
+                      ]
+                        .filter(Boolean)
+                        .filter(
+                          (member, index, array) => {
+                            const memberId = (
+                              member._id || member
                             ).toString();
+
+                            return (
+                              array.findIndex(
+                                (item) =>
+                                  (
+                                    item._id || item
+                                  ).toString() ===
+                                  memberId
+                              ) === index
+                            );
+                          }
+                        )
+                        .map((member) => {
+                          const memberId = (
+                            member._id || member
+                          ).toString();
 
                           return (
                             <option
                               key={memberId}
                               value={memberId}
                             >
-                              {member.name}
+                              {member.name ||
+                                "Unknown user"}
+
                               {memberId ===
-                              project.owner._id?.toString()
+                              project.owner?._id?.toString()
                                 ? " (Owner)"
                                 : ""}
                             </option>
                           );
-                        }
-                      )}
+                        })}
                     </select>
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Only the project owner can
-                      change task assignment.
+                      Only the project owner can change
+                      task assignment.
                     </p>
-                  </>
-                ) : (
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-                    {getAssigneeName()}
                   </div>
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              {/* Modal Actions */}
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+
                 <button
                   type="button"
                   onClick={cancelEditing}
                   disabled={isUpdating}
-                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -556,89 +554,84 @@ function TaskDetails() {
                   type="button"
                   onClick={handleUpdate}
                   disabled={isUpdating}
-                  className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isUpdating
                     ? "Saving..."
                     : "Save Changes"}
                 </button>
+
               </div>
             </div>
-          </section>
-        ) : (
-          <>
-          /* Task Details */
-         {/* Task Details */}
+          </div>
+        )}
 
-<section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        {/* Task Details */}
+        <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
 
-  <div>
-    <h2 className="text-lg font-semibold">
-      Task Details
-    </h2>
+          <div>
+            <h2 className="text-lg font-semibold">
+              Task Details
+            </h2>
 
-    <p className="mt-1 text-sm text-slate-400">
-      Information about this task.
-    </p>
-  </div>
+            <p className="mt-1 text-sm text-slate-400">
+              Information about this task.
+            </p>
+          </div>
 
-  {/* Details */}
-  <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {/* Description */}
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Description
+            </p>
 
-    <DetailItem
-      label="Assignee"
-      value={getAssigneeName()}
-    />
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+              {task.description || "No description"}
+            </p>
+          </div>
 
-    <DetailItem
-      label="Status"
-      value={task.status || "Planning"}
-    />
+          {/* Details */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
 
-    <DetailItem
-      label="Priority"
-      value={task.priority || "Medium"}
-    />
+            <DetailItem
+              label="Assigned To"
+              value={getAssigneeName()}
+            />
 
-  </div>
+            <DetailItem
+              label="Status"
+              value={task.status || "Planning"}
+            />
 
-  {/* Permission */}
-  <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-    <p className="text-xs text-slate-500">
-      Editing permission
-    </p>
+            <DetailItem
+              label="Priority"
+              value={task.priority || "Medium"}
+            />
 
-    <p className="mt-1 text-sm text-slate-300">
-      {isOwner
-        ? "You are the project owner and can edit this task."
-        : isAssignedMember
-        ? "You are assigned to this task and can edit it."
-        : "You can view this task but cannot edit it."}
-    </p>
-  </div>
+          </div>
 
-</section>
-    
-    
+          {/* Permission */}
+          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
 
-{/* Description */}
-<section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <p className="text-xs text-slate-500">
+              Editing permission
+            </p>
 
-  <div>
-    <p className="text-xs uppercase tracking-wide text-slate-500">
-      Description
-    </p>
+            <p className="mt-1 text-sm text-slate-300">
+              {isOwner
+                ? "You are the project owner and can edit this task."
+                : isAssignedMember
+                ? "You are assigned to this task and can edit it."
+                : "You can view this task but cannot edit it."}
+            </p>
 
-    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-      {task.description || "No description"}
-    </p>
-  </div>
-
-</section>
+          </div>
+        </section>
 
         {/* Task Actions */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2">
 
+          {/* View Issues */}
           <button
             type="button"
             onClick={() =>
@@ -662,6 +655,7 @@ function TaskDetails() {
             </span>
           </button>
 
+          {/* Create Issue */}
           <button
             type="button"
             onClick={() =>
@@ -690,6 +684,7 @@ function TaskDetails() {
         {/* Comments + Activity */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2">
 
+          {/* Comments */}
           <button
             type="button"
             onClick={() =>
@@ -712,6 +707,7 @@ function TaskDetails() {
             </span>
           </button>
 
+          {/* Activity */}
           <button
             type="button"
             onClick={() =>
@@ -735,10 +731,8 @@ function TaskDetails() {
           </button>
 
         </section>
-        </>
-        )}
+
       </main>
-      
     </div>
   );
 }
@@ -746,6 +740,7 @@ function TaskDetails() {
 function DetailItem({ label, value }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+
       <p className="text-[11px] uppercase tracking-wide text-slate-500">
         {label}
       </p>
@@ -753,6 +748,7 @@ function DetailItem({ label, value }) {
       <p className="mt-2 truncate text-sm font-medium text-slate-300">
         {value}
       </p>
+
     </div>
   );
 }

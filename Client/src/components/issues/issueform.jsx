@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/Authcontext.jsx";
 
+<<<<<<< HEAD
 function IssueForm({
   project,
   projectId,
@@ -15,6 +16,24 @@ function IssueForm({
   const currentUserId = user?._id || user?.id;
   const isTaskIssue = Boolean(taskId);
   const isProjectIssue = !isTaskIssue;
+=======
+function IssueForm({ project , projectId, taskId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
+  const { user } = useAuth();
+  const currentUserId = user?._id || user?.id;
+  const isTaskIssue = Boolean(taskId);
+const isProjectIssue = !isTaskIssue;
+
+  const [formData, setFormData] = useState({
+  title: issue?.title || "",
+  description: issue?.description || "",
+  status: issue?.status || "Open",
+  priority: issue?.priority || "Medium",
+  labels: issue?.labels || [],
+  assignedTo:
+  issue?.assignedTo?._id ||
+  issue?.assignedTo ||
+  "",
+>>>>>>> cbb9c22 (feat : make changes in UI)
 
   const [formData, setFormData] = useState({
     title: issue?.title || "",
@@ -108,6 +127,7 @@ function IssueForm({
       setSubmitting(true);
 
       const payload = {
+<<<<<<< HEAD
         title: formData.title.trim(),
         description: formData.description.trim(),
         status: formData.status,
@@ -119,6 +139,23 @@ function IssueForm({
       // Project-level issues support referral and owner-controlled assignment.
       if (isProjectIssue) {
         payload.referredTo = formData.referredTo || null;
+=======
+  title: formData.title.trim(),
+  description: formData.description.trim(),
+  status: formData.status,
+  priority: formData.priority,
+  labels: formData.labels,
+  project: projectId,
+};
+
+// Only owner-controlled UI sends actual assignment.
+if (isProjectIssue) {
+  payload.referredTo = formData.referredTo || null;
+if (canAssign) {
+  payload.assignedTo = formData.assignedTo || null;
+}
+}
+>>>>>>> cbb9c22 (feat : make changes in UI)
 
         if (canAssign) {
           payload.assignedTo = formData.assignedTo || null;
@@ -237,6 +274,7 @@ function IssueForm({
             </div>
           </div>
 
+<<<<<<< HEAD
           {isProjectIssue && !issue && (
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">
@@ -269,6 +307,15 @@ function IssueForm({
               </p>
             </div>
           )}
+=======
+          {/* Assignee */}
+          {/* Refer To */}
+{isProjectIssue && (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-300">
+      Refer To
+    </label>
+>>>>>>> cbb9c22 (feat : make changes in UI)
 
           {isProjectIssue && canAssign && (
             <div>
@@ -301,6 +348,65 @@ function IssueForm({
             </div>
           )}
 
+<<<<<<< HEAD
+=======
+    return (
+      memberId &&
+      memberId !== currentUserId?.toString()
+    );
+  })
+  .map((member) => (
+    <option
+      key={member._id}
+      value={member._id}
+    >
+      {member.name || member.email}
+    </option>
+  ))}
+    </select>
+
+    <p className="mt-2 text-xs text-slate-500">
+      Referencing someone does not assign the issue to them.
+      Only the project owner can assign the issue.
+    </p>
+  </div>
+)}
+
+{/* Actual Assignment */}
+{isProjectIssue && canAssign && (
+  <div>
+    <label className="mb-2 block text-sm font-medium text-slate-300">
+      Assign To
+    </label>
+
+    <select
+      name="assignedTo"
+      value={formData.assignedTo}
+      onChange={handleChange}
+      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+    >
+      <option value="">
+        Unassigned
+      </option>
+
+      {projectMembers.map((member) => (
+        <option
+          key={member._id}
+          value={member._id}
+        >
+          {member.name || member.email}
+        </option>
+      ))}
+    </select>
+
+    <p className="mt-2 text-xs text-slate-500">
+      Only the project owner can assign or reassign an issue.
+    </p>
+  </div>
+)}
+
+          {/* Labels */}
+>>>>>>> cbb9c22 (feat : make changes in UI)
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Labels

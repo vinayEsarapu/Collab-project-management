@@ -2,7 +2,7 @@ import { useState } from "react";
 import { loginUser } from "../services/authService";
 import { useAuth } from "../context/Authcontext";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+
 
 function Login() {
   const navigate = useNavigate();
@@ -141,13 +141,13 @@ function Login() {
     />
 
     <button
-      type="button"
-      onClick={() => setShowPassword((prev) => !prev)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition-colors duration-200 hover:text-slate-200"
-      aria-label={showPassword ? "Hide password" : "Show password"}
-    >
-      {showPassword ? "🙈" : "👁️"}
-    </button>
+  type="button"
+  onClick={() => setShowPassword((prev) => !prev)}
+  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition-colors duration-200 hover:text-slate-200"
+  aria-label={showPassword ? "Hide password" : "Show password"}
+>
+  👁️
+</button>
   </div>
 </div>
 

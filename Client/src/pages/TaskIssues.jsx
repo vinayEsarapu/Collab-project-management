@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import IssueCard from "../components/issues/IssueCard";
 import IssueForm from "../components/issues/issueform";
-import { useAuth } from "../context/Authcontext";
 import {
   createIssue,
   getIssuesByTask,
@@ -16,11 +15,10 @@ function TaskIssues() {
   const {
     id: projectId,
     taskId,
-     issueId,
+    issueId,
   } = useParams();
 
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [project, setProject] = useState(null);
   const [task, setTask] = useState(null);
@@ -28,19 +26,12 @@ function TaskIssues() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showForm, setShowForm] = useState( issueId === "new");
+
+  const [showForm, setShowForm] = useState(issueId === "new");
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState("All");
-  const [priorityFilter, setPriorityFilter] =
-    useState("All");
-
-  const isProjectOwner =
-    user?._id &&
-    project?.owner?._id &&
-    user._id.toString() ===
-      project.owner._id.toString();
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
 
   const fetchData = async () => {
     try {
@@ -77,29 +68,30 @@ function TaskIssues() {
   }, [projectId, taskId]);
 
   useEffect(() => {
-  if (issueId === "new") {
-    setShowForm(true);
-  }
-}, [issueId]);
+    setShowForm(issueId === "new");
+  }, [issueId]);
 
   const handleCreateIssue = async (issueData) => {
     try {
       setError("");
 
+      // IMPORTANT:
+      // Do NOT send assignedTo or referredTo for task-level issues.
+      // The backend will automatically assign the issue
+      // to the task's assigned user.
       await createIssue({
-  ...issueData,
-  project: projectId,
-  task: taskId,
-
-  // Task issue defaults to task assignee.
-  assignedTo:
-    issueData.assignedTo ||
-    task?.assignedTo?._id ||
-    task?.assignedTo ||
-    null,
-});
+        ...issueData,
+        project: projectId,
+        task: taskId,
+      });
 
       setShowForm(false);
+
+      // Remove /new from the URL after successful creation.
+      navigate(
+        `/projects/${projectId}/tasks/${taskId}/issues`,
+        { replace: true }
+      );
 
       await fetchData();
     } catch (error) {
@@ -113,10 +105,20 @@ function TaskIssues() {
     }
   };
 
+  const handleClose = () => {
+    setShowForm(false);
+
+    if (issueId === "new") {
+      navigate(
+        `/projects/${projectId}/tasks/${taskId}/issues`,
+        { replace: true }
+      );
+    }
+  };
+
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
-      const searchText =
-        search.toLowerCase();
+      const searchText = search.toLowerCase();
 
       const matchesSearch =
         issue.title
@@ -153,6 +155,7 @@ function TaskIssues() {
         <div className="mx-auto max-w-7xl animate-pulse">
           <div className="h-6 w-40 rounded bg-white/10" />
           <div className="mt-4 h-10 w-72 rounded bg-white/10" />
+
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {[1, 2, 3, 4].map((item) => (
               <div
@@ -192,23 +195,28 @@ function TaskIssues() {
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("All");
-              setPriorityFilter("All");
-            }}
-            className="rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-white"
-          >
-            Clear Filters
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("All");
+                setPriorityFilter("All");
+              }}
+              className="rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
+            >
+              Clear Filters
+            </button>
 
-          <button
-            onClick={() => setShowForm(true)}
-            className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold hover:bg-indigo-400"
-          >
-            + Create Issue
-          </button>
+            <button
+              onClick={() => {
+                setError("");
+                setShowForm(true);
+              }}
+              className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
+            >
+              + Create Issue
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -231,19 +239,13 @@ function TaskIssues() {
               }
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none"
             >
-              <option value="All">
-                All Status
-              </option>
+              <option value="All">All Status</option>
               <option value="Open">Open</option>
               <option value="In Progress">
                 In Progress
               </option>
-              <option value="Resolved">
-                Resolved
-              </option>
-              <option value="Closed">
-                Closed
-              </option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
             </select>
 
             <select
@@ -253,17 +255,11 @@ function TaskIssues() {
               }
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none"
             >
-              <option value="All">
-                All Priority
-              </option>
+              <option value="All">All Priority</option>
               <option value="Low">Low</option>
-              <option value="Medium">
-                Medium
-              </option>
+              <option value="Medium">Medium</option>
               <option value="High">High</option>
-              <option value="Critical">
-                Critical
-              </option>
+              <option value="Critical">Critical</option>
             </select>
           </div>
         </div>
@@ -283,29 +279,28 @@ function TaskIssues() {
           </p>
         </div>
 
-        {!loading &&
-          filteredIssues.length === 0 && (
-            <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
-              <h3 className="text-lg font-semibold">
-                No issues found
-              </h3>
+        {filteredIssues.length === 0 && (
+          <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
+            <h3 className="text-lg font-semibold">
+              No issues found
+            </h3>
 
-              <p className="mt-2 text-sm text-slate-500">
-                There are no issues for this task
-                matching the current filters.
-              </p>
+            <p className="mt-2 text-sm text-slate-500">
+              There are no issues for this task
+              matching the current filters.
+            </p>
 
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-5 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold hover:bg-indigo-400"
-              >
-                Create Issue
-              </button>
-            </div>
-          )}
+            <button
+              onClick={() => setShowForm(true)}
+              className="mt-5 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold hover:bg-indigo-400"
+            >
+              Create Issue
+            </button>
+          </div>
+        )}
 
         {filteredIssues.length > 0 && (
-          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-0 lg:grid-cols-2">
             {filteredIssues.map((issue) => (
               <IssueCard
                 key={issue._id}
@@ -319,15 +314,16 @@ function TaskIssues() {
       </div>
 
       {showForm && (
-       <IssueForm
-  projectId={projectId}
-  project={project}
-  canAssign={isProjectOwner}
-  members={project?.members || []}
-  currentUserId={user?._id}
-  onSubmit={handleCreateIssue}
-  onClose={() => setShowForm(false)}
-/>
+        <IssueForm
+          project={project}
+          projectId={projectId}
+          taskId={taskId}
+          members={[]}
+          issue={null}
+          canAssign={false}
+          onSubmit={handleCreateIssue}
+          onClose={handleClose}
+        />
       )}
     </div>
   );
