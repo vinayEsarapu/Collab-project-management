@@ -1,20 +1,25 @@
-
 const {
   notFound,
   errorHandler,
 } = require("./middleware/errorMiddleware");
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
 const cookieParser = require("cookie-parser");
+
+const authRoutes = require("./routes/authRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const activityRoutes = require("./routes/activityRoutes");
+const profileRoutes = require("./routes/profileRoutes.js");
+
+const app = express();
 
 dotenv.config();
+
 if (!process.env.MONGODB_URI) {
   throw new Error("MONGODB_URI is not configured");
 }
@@ -26,8 +31,10 @@ if (!process.env.ACCESS_TOKEN_SECRET) {
 if (!process.env.REFRESH_TOKEN_SECRET) {
   throw new Error("REFRESH_TOKEN_SECRET is not configured");
 }
-const app = express();
-const allowedOrigin = process.env.CLIENT_URL;
+
+/* =========================
+   CORS
+========================= */
 
 app.use(
   cors({
@@ -36,21 +43,33 @@ app.use(
   })
 );
 
+/* =========================
+   Global Middleware
+========================= */
+
 app.use(express.json());
 app.use(cookieParser());
-// Middleware
-app.use("/api/projects", projectRoutes);
-app.use("/api/issues", issueRoutes);
-app.use("/api/comments", commentRoutes);
-app.use("/api/activities", activityRoutes);
-//  Routes
+
+/* =========================
+   API Routes
+========================= */
+
 app.use("/api/auth", authRoutes);
-const PORT = process.env.PORT || 5000;
 
+app.use("/api/projects", projectRoutes);
 
+app.use("/api/issues", issueRoutes);
 
+app.use("/api/comments", commentRoutes);
 
-// Health route
+app.use("/api/activities", activityRoutes);
+
+app.use("/api/profile", profileRoutes);
+
+/* =========================
+   Health Route
+========================= */
+
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "success",
@@ -58,13 +77,20 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 404 handler
+/* =========================
+   Error Handling
+========================= */
+
 app.use(notFound);
 
-// Global error handler
 app.use(errorHandler);
 
-// Start server
+/* =========================
+   Start Server
+========================= */
+
+const PORT = process.env.PORT || 5000;
+
 const startServer = async () => {
   await connectDB();
 

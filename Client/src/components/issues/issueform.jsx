@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/Authcontext.jsx";
 
-<<<<<<< HEAD
 function IssueForm({
   project,
   projectId,
@@ -13,27 +12,10 @@ function IssueForm({
   onClose,
 }) {
   const { user } = useAuth();
+
   const currentUserId = user?._id || user?.id;
   const isTaskIssue = Boolean(taskId);
   const isProjectIssue = !isTaskIssue;
-=======
-function IssueForm({ project , projectId, taskId, members = [],  issue = null,   canAssign = false,onSubmit, onClose }) {
-  const { user } = useAuth();
-  const currentUserId = user?._id || user?.id;
-  const isTaskIssue = Boolean(taskId);
-const isProjectIssue = !isTaskIssue;
-
-  const [formData, setFormData] = useState({
-  title: issue?.title || "",
-  description: issue?.description || "",
-  status: issue?.status || "Open",
-  priority: issue?.priority || "Medium",
-  labels: issue?.labels || [],
-  assignedTo:
-  issue?.assignedTo?._id ||
-  issue?.assignedTo ||
-  "",
->>>>>>> cbb9c22 (feat : make changes in UI)
 
   const [formData, setFormData] = useState({
     title: issue?.title || "",
@@ -41,9 +23,19 @@ const isProjectIssue = !isTaskIssue;
     status: issue?.status || "Open",
     priority: issue?.priority || "Medium",
     labels: issue?.labels || [],
-    assignedTo: issue?.assignedTo?._id || issue?.assignedTo || "",
-    referredTo: issue?.referredTo?._id || issue?.referredTo || "",
+    assignedTo:
+      issue?.assignedTo?._id ||
+      issue?.assignedTo ||
+      "",
+    referredTo:
+      issue?.referredTo?._id ||
+      issue?.referredTo ||
+      "",
   });
+
+  const [labelInput, setLabelInput] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!issue) return;
@@ -54,28 +46,38 @@ const isProjectIssue = !isTaskIssue;
       status: issue.status || "Open",
       priority: issue.priority || "Medium",
       labels: issue.labels || [],
-      assignedTo: issue.assignedTo?._id || issue.assignedTo || "",
-      referredTo: issue.referredTo?._id || issue.referredTo || "",
+      assignedTo:
+        issue.assignedTo?._id ||
+        issue.assignedTo ||
+        "",
+      referredTo:
+        issue.referredTo?._id ||
+        issue.referredTo ||
+        "",
     });
   }, [issue]);
 
-  const [labelInput, setLabelInput] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const projectMembers = useMemo(() => {
-    const projectUsers = members?.length ? members : project?.members || [];
+    const projectUsers = members?.length
+      ? members
+      : project?.members || [];
+
     const owner = project?.owner;
-    const users = owner ? [owner, ...projectUsers] : projectUsers;
+
+    const users = owner
+      ? [owner, ...projectUsers]
+      : projectUsers;
 
     return users.filter((member, index, self) => {
       const memberId = member?._id?.toString();
+
       if (!memberId) return false;
 
       return (
         index ===
         self.findIndex(
-          (item) => item?._id?.toString() === memberId
+          (item) =>
+            item?._id?.toString() === memberId
         )
       );
     });
@@ -83,11 +85,16 @@ const isProjectIssue = !isTaskIssue;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setFormData((previous) => ({ ...previous, [name]: value }));
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   };
 
   const addLabel = () => {
     const label = labelInput.trim();
+
     if (!label) return;
 
     if (formData.labels.includes(label)) {
@@ -99,13 +106,16 @@ const isProjectIssue = !isTaskIssue;
       ...previous,
       labels: [...previous.labels, label],
     }));
+
     setLabelInput("");
   };
 
   const removeLabel = (labelToRemove) => {
     setFormData((previous) => ({
       ...previous,
-      labels: previous.labels.filter((label) => label !== labelToRemove),
+      labels: previous.labels.filter(
+        (label) => label !== labelToRemove
+      ),
     }));
   };
 
@@ -127,7 +137,6 @@ const isProjectIssue = !isTaskIssue;
       setSubmitting(true);
 
       const payload = {
-<<<<<<< HEAD
         title: formData.title.trim(),
         description: formData.description.trim(),
         status: formData.status,
@@ -136,34 +145,27 @@ const isProjectIssue = !isTaskIssue;
         project: projectId,
       };
 
-      // Project-level issues support referral and owner-controlled assignment.
+      /*
+       * Project-level issues:
+       * - referredTo can be selected by project members
+       * - assignedTo can only be sent when the UI allows assignment
+       */
       if (isProjectIssue) {
-        payload.referredTo = formData.referredTo || null;
-=======
-  title: formData.title.trim(),
-  description: formData.description.trim(),
-  status: formData.status,
-  priority: formData.priority,
-  labels: formData.labels,
-  project: projectId,
-};
-
-// Only owner-controlled UI sends actual assignment.
-if (isProjectIssue) {
-  payload.referredTo = formData.referredTo || null;
-if (canAssign) {
-  payload.assignedTo = formData.assignedTo || null;
-}
-}
->>>>>>> cbb9c22 (feat : make changes in UI)
+        payload.referredTo =
+          formData.referredTo || null;
 
         if (canAssign) {
-          payload.assignedTo = formData.assignedTo || null;
+          payload.assignedTo =
+            formData.assignedTo || null;
         }
       }
 
-      // Task-level issues intentionally send neither assignedTo nor referredTo.
-      // The server derives assignedTo from the task assignee.
+      /*
+       * Task-level issues:
+       * The server automatically derives the assignee
+       * from the task. Therefore we intentionally do not
+       * send assignedTo or referredTo here.
+       */
       await onSubmit(payload);
     } catch (submitError) {
       setError(
@@ -178,11 +180,15 @@ if (canAssign) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-2xl animate-[fadeIn_0.2s_ease-out] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+        
+        {/* HEADER */}
+
         <div className="mb-6 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-white">
               {issue ? "Edit Issue" : "Create Issue"}
             </h2>
+
             <p className="mt-1 text-sm text-slate-400">
               {issue
                 ? "Update the issue details."
@@ -202,17 +208,26 @@ if (canAssign) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
+          
+          {/* ERROR */}
+
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
 
+          {/* TITLE */}
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Title
             </label>
+
             <input
               type="text"
               name="title"
@@ -224,10 +239,13 @@ if (canAssign) {
             />
           </div>
 
+          {/* DESCRIPTION */}
+
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Description
             </label>
+
             <textarea
               name="description"
               value={formData.description}
@@ -238,21 +256,36 @@ if (canAssign) {
             />
           </div>
 
+          {/* STATUS + PRIORITY */}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-300">
                 Status
               </label>
+
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
                 className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
               >
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
+                <option value="Open">
+                  Open
+                </option>
+
+                <option value="In Progress">
+                  In Progress
+                </option>
+
+                <option value="Resolved">
+                  Resolved
+                </option>
+
+                <option value="Closed">
+                  Closed
+                </option>
               </select>
             </div>
 
@@ -260,162 +293,149 @@ if (canAssign) {
               <label className="mb-2 block text-sm font-medium text-slate-300">
                 Priority
               </label>
+
               <select
                 name="priority"
                 value={formData.priority}
                 onChange={handleChange}
                 className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
               >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
+                <option value="Low">
+                  Low
+                </option>
+
+                <option value="Medium">
+                  Medium
+                </option>
+
+                <option value="High">
+                  High
+                </option>
+
+                <option value="Critical">
+                  Critical
+                </option>
               </select>
             </div>
+
           </div>
 
-<<<<<<< HEAD
-          {isProjectIssue && !issue && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">
-                Refer To
-              </label>
-              <select
-                name="referredTo"
-                value={formData.referredTo}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-              >
-                <option value="">No referral</option>
-                {projectMembers
-                  .filter((member) => {
-                    const memberId = member?._id?.toString();
-                    return (
-                      memberId &&
-                      memberId !== currentUserId?.toString()
-                    );
-                  })
-                  .map((member) => (
-                    <option key={member._id} value={member._id}>
-                      {member.name || member.email}
-                    </option>
-                  ))}
-              </select>
-              <p className="mt-2 text-xs text-slate-500">
-                Referral does not assign the issue. Assignment is controlled
-                only by the project owner.
-              </p>
-            </div>
-          )}
-=======
-          {/* Assignee */}
-          {/* Refer To */}
-{isProjectIssue && (
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-300">
-      Refer To
-    </label>
->>>>>>> cbb9c22 (feat : make changes in UI)
+          {/* PROJECT LEVEL ISSUE OPTIONS */}
 
-          {isProjectIssue && canAssign && (
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">
-                Assign To
-              </label>
-              <select
-                name="assignedTo"
-                value={formData.assignedTo}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-              >
-                <option value="">Unassigned</option>
-                {projectMembers.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.name || member.email}
+          {isProjectIssue && (
+            <>
+              {/* REFER TO */}
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Refer To
+                </label>
+
+                <select
+                  name="referredTo"
+                  value={formData.referredTo}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+                >
+                  <option value="">
+                    No referral
                   </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-slate-500">
-                Only the project owner can assign or reassign an issue.
-              </p>
-            </div>
+
+                  {projectMembers
+                    .filter((member) => {
+                      const memberId =
+                        member?._id?.toString();
+
+                      return (
+                        memberId &&
+                        memberId !==
+                          currentUserId?.toString()
+                      );
+                    })
+                    .map((member) => (
+                      <option
+                        key={member._id}
+                        value={member._id}
+                      >
+                        {member.name ||
+                          member.email}
+                      </option>
+                    ))}
+                </select>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Referral does not assign the issue.
+                  Assignment is controlled only by the
+                  project owner.
+                </p>
+              </div>
+
+              {/* ASSIGN TO */}
+
+              {canAssign && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Assign To
+                  </label>
+
+                  <select
+                    name="assignedTo"
+                    value={formData.assignedTo}
+                    onChange={handleChange}
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
+                  >
+                    <option value="">
+                      Unassigned
+                    </option>
+
+                    {projectMembers.map(
+                      (member) => (
+                        <option
+                          key={member._id}
+                          value={member._id}
+                        >
+                          {member.name ||
+                            member.email}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    Only the project owner can assign
+                    or reassign an issue.
+                  </p>
+                </div>
+              )}
+            </>
           )}
+
+          {/* TASK LEVEL INFORMATION */}
 
           {isTaskIssue && (
             <div className="rounded-xl border border-indigo-400/10 bg-indigo-400/5 px-4 py-3 text-sm text-slate-400">
-              This task issue is automatically assigned to the user assigned
-              to the task. Task issues cannot be referred or manually assigned.
+              This task issue is automatically assigned
+              to the user assigned to the task. Task
+              issues cannot be referred or manually
+              assigned.
             </div>
           )}
 
-<<<<<<< HEAD
-=======
-    return (
-      memberId &&
-      memberId !== currentUserId?.toString()
-    );
-  })
-  .map((member) => (
-    <option
-      key={member._id}
-      value={member._id}
-    >
-      {member.name || member.email}
-    </option>
-  ))}
-    </select>
+          {/* LABELS */}
 
-    <p className="mt-2 text-xs text-slate-500">
-      Referencing someone does not assign the issue to them.
-      Only the project owner can assign the issue.
-    </p>
-  </div>
-)}
-
-{/* Actual Assignment */}
-{isProjectIssue && canAssign && (
-  <div>
-    <label className="mb-2 block text-sm font-medium text-slate-300">
-      Assign To
-    </label>
-
-    <select
-      name="assignedTo"
-      value={formData.assignedTo}
-      onChange={handleChange}
-      className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-    >
-      <option value="">
-        Unassigned
-      </option>
-
-      {projectMembers.map((member) => (
-        <option
-          key={member._id}
-          value={member._id}
-        >
-          {member.name || member.email}
-        </option>
-      ))}
-    </select>
-
-    <p className="mt-2 text-xs text-slate-500">
-      Only the project owner can assign or reassign an issue.
-    </p>
-  </div>
-)}
-
-          {/* Labels */}
->>>>>>> cbb9c22 (feat : make changes in UI)
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Labels
             </label>
+
             <div className="flex gap-2">
+
               <input
                 type="text"
                 value={labelInput}
-                onChange={(event) => setLabelInput(event.target.value)}
+                onChange={(event) =>
+                  setLabelInput(event.target.value)
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -425,6 +445,7 @@ if (canAssign) {
                 placeholder="bug, frontend..."
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-indigo-400/50"
               />
+
               <button
                 type="button"
                 onClick={addLabel}
@@ -432,25 +453,33 @@ if (canAssign) {
               >
                 Add
               </button>
+
             </div>
 
             {formData.labels.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
+
                 {formData.labels.map((label) => (
                   <button
                     key={label}
                     type="button"
-                    onClick={() => removeLabel(label)}
+                    onClick={() =>
+                      removeLabel(label)
+                    }
                     className="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1 text-xs text-indigo-300 transition hover:bg-red-400/10 hover:text-red-300"
                   >
                     #{label} ×
                   </button>
                 ))}
+
               </div>
             )}
           </div>
 
+          {/* ACTIONS */}
+
           <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+
             <button
               type="button"
               onClick={onClose}
@@ -459,6 +488,7 @@ if (canAssign) {
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={submitting}
@@ -472,7 +502,9 @@ if (canAssign) {
                   ? "Save Changes"
                   : "Create Issue"}
             </button>
+
           </div>
+
         </form>
       </div>
     </div>

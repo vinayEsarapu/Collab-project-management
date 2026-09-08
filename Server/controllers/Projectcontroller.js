@@ -725,17 +725,21 @@ const getProjects = async (
   try {
     const userId = req.user.userId;
 
-    const projects =
-      await Project.find({
-        $or: [
-          { owner: userId },
-          { members: userId },
-        ],
-      }).populate(
-        "members",
-        "name email"
-      );
-
+   const projects =
+  await Project.find({
+    $or: [
+      { owner: userId },
+      { members: userId },
+    ],
+  })
+    .populate(
+      "owner",
+      "name userCode email"
+    )
+    .populate(
+      "members",
+      "name userCode email"
+    );
     res.status(200).json({
       projects,
     });

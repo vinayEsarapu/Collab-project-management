@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Outlet, } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Outlet,
+} from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
@@ -17,6 +23,7 @@ import ProjectComments from "./pages/ProjectComments";
 import Tasks from "./pages/Tasks";
 import TaskDetails from "./pages/TaskDetails";
 import TaskIssues from "./Pages/TaskIssues";
+import Profile from "./pages/Profile";
 
 function ProtectedLayout() {
   return (
@@ -35,109 +42,161 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Public routes */}
+        {/* =========================
+            PUBLIC ROUTES
+        ========================= */}
+
         <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
 
-        {/* Protected routes */}
-        <Route element={<ProtectedRoute />}>
-        {/* Protected layout */}
-          <Route element={<ProtectedLayout />}>
-
-          <Route path="/dashboard" element={<Dashboard />} />
-
-          <Route
-          path="/projects"
-          element={<Projects />}
-          />
-
-            <Route
-            path="/projects/new"
-            element={<CreateProject />}
-           />
-
-          <Route
-            path="/projects/:id"
-            element={<ProjectDetails />}
-          />
-
-          <Route
-            path="/projects/:id/tasks"
-            element={<Tasks />}
-          />
-
-      <Route
-        path="/projects/:id/tasks/:taskId"
-        element={<TaskDetails />}
-      />
-
-       <Route
-          path="/projects/:id/tasks/:taskId/issues"
-         element={<TaskIssues />}
-       />
-
-       <Route
-         path="/projects/:id/tasks/:taskId/issues/new"
-         element={<TaskIssues />}
-       />
-
-         <Route
-           path="/projects/:id/tasks/:taskId/issues/:issueId"
-           element={<IssueDetails />}
-         />
-
-         <Route
-          path="/projects/:id/tasks/:taskId/issues/:issueId/comments"
-          element={<Comments />}
-         />
-
-          <Route
-            path="/projects/:id/activity"
-            element={<ProjectActivity />}
-          />
-
-           <Route
-            path="/projects/:id/issues"
-            element={<Issues />}
-          />
-
-         <Route
-          path="/projects/:id/comments"
-          element={<ProjectComments />}
+        <Route
+          path="/register"
+          element={<Register />}
         />
 
-          <Route
-           path="/projects/:id/issues/:issueId"
-           element={<IssueDetails />}
-          />
-          <Route
-           path="/projects/:id/issues/:issueId/activity"
-           element={<Activity />}
-          />
-          <Route
-            path="/projects/:id/issues/:issueId/comments"
-            element={<Comments />}
-          />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
-          <Route
-            path="/projects/:id/tasks/:taskId/comments"
-            element={<Comments />}
-          />
+        {/* =========================
+            PROTECTED ROUTES
+        ========================= */}
 
-          <Route
-  path="/projects/:id/tasks/:taskId/issues/:issueId/activity"
-  element={<Activity />}
-/>
+        <Route element={<ProtectedRoute />}>
 
-       <Route
-          path="/projects/:id/tasks/:taskId/activity"
-           element={<Activity />}
-         />
+          {/* Protected Layout */}
+          <Route element={<ProtectedLayout />}>
 
-          
+            <Route
+              path="/dashboard"
+              element={<Dashboard />}
+            />
+
+            <Route
+              path="/projects"
+              element={<Projects />}
+            />
+
+            <Route
+              path="/projects/new"
+              element={<CreateProject />}
+            />
+
+            {/* =========================
+                PROFILE
+            ========================= */}
+
+            <Route
+              path="/profile"
+              element={<Profile />}
+            />
+
+            {/* =========================
+                PROJECT
+            ========================= */}
+
+            <Route
+              path="/projects/:id"
+              element={<ProjectDetails />}
+            />
+
+            {/* =========================
+                TASKS
+            ========================= */}
+
+            <Route
+              path="/projects/:id/tasks"
+              element={<Tasks />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId"
+              element={<TaskDetails />}
+            />
+
+            {/* =========================
+                TASK ISSUES
+            ========================= */}
+
+            <Route
+              path="/projects/:id/tasks/:taskId/issues"
+              element={<TaskIssues />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/issues/new"
+              element={<TaskIssues />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/issues/:issueId"
+              element={<IssueDetails />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/issues/:issueId/comments"
+              element={<Comments />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/issues/:issueId/activity"
+              element={<Activity />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/comments"
+              element={<Comments />}
+            />
+
+            <Route
+              path="/projects/:id/tasks/:taskId/activity"
+              element={<Activity />}
+            />
+
+            {/* =========================
+                PROJECT ACTIVITY
+            ========================= */}
+
+            <Route
+              path="/projects/:id/activity"
+              element={<ProjectActivity />}
+            />
+
+            {/* =========================
+                PROJECT ISSUES
+            ========================= */}
+
+            <Route
+              path="/projects/:id/issues"
+              element={<Issues />}
+            />
+
+            <Route
+              path="/projects/:id/issues/:issueId"
+              element={<IssueDetails />}
+            />
+
+            <Route
+              path="/projects/:id/issues/:issueId/activity"
+              element={<Activity />}
+            />
+
+            <Route
+              path="/projects/:id/issues/:issueId/comments"
+              element={<Comments />}
+            />
+
+            {/* =========================
+                PROJECT COMMENTS
+            ========================= */}
+
+            <Route
+              path="/projects/:id/comments"
+              element={<ProjectComments />}
+            />
+
+          </Route>
         </Route>
-         </Route>
 
       </Routes>
     </BrowserRouter>

@@ -768,28 +768,35 @@ function MemberCard({
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 transition-all duration-200 hover:border-white/20 hover:bg-white/[0.05]">
+      {/* Avatar */}
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-semibold text-indigo-300">
         {name.charAt(0).toUpperCase()}
       </div>
 
+      {/* User Details */}
       <div className="min-w-0 flex-1">
-       <p className="truncate text-sm font-medium text-slate-200">
+        <p className="truncate text-sm font-medium text-slate-200">
           {name}
-       </p>
+        </p>
 
-       {member?.userCode && (
-         <p className="mt-1 text-xs text-slate-500">
-            {member.userCode}
-         </p>
+        {member?.userCode && (
+          <p className="mt-1 text-xs text-slate-500">
+            User ID: {member.userCode}
+          </p>
         )}
 
-       {isOwner && (
-         <p className="mt-1 text-xs text-indigo-300">
-           Owner
-         </p>
-     )}
+        <p
+          className={`mt-1 text-xs ${
+            isOwner
+              ? "text-indigo-300"
+              : "text-slate-500"
+          }`}
+        >
+          {isOwner ? "Owner" : "Member"}
+        </p>
       </div>
 
+      {/* Remove Member */}
       {!isOwner && member?._id && onRemove && (
         <button
           type="button"
