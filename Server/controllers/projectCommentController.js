@@ -6,6 +6,10 @@ const ProjectActivity = require("../models/ProjectActivity");
 // GET PROJECT COMMENTS
 // -----------------------------------------
 
+// -----------------------------------------
+// GET PROJECT COMMENTS
+// -----------------------------------------
+
 const getProjectComments = async (req, res) => {
   try {
     const projectId = req.params.id;
@@ -24,26 +28,63 @@ const getProjectComments = async (req, res) => {
     );
 
     const commenterId =
-  (req.query.commenterId || "").trim();
+      (req.query.commenterId || "").trim();
 
-const filter = {
-  project: projectId,
-};
+    const date =
+      (req.query.date || "").trim();
 
-if (commenterId) {
-  if (
-    !mongoose.Types.ObjectId.isValid(commenterId)
-  ) {
-    return res.status(400).json({
-      message: "Invalid commenter ID",
-    });
-  }
+    const filter = {
+      project: projectId,
+    };
 
-  filter.createdBy = commenterId;
-}
+    // -----------------------------------------
+    // COMMENTER FILTER
+    // -----------------------------------------
+
+    if (commenterId) {
+      if (
+        !mongoose.Types.ObjectId.isValid(commenterId)
+      ) {
+        return res.status(400).json({
+          message: "Invalid commenter ID",
+        });
+      }
+
+      filter.createdBy = commenterId;
+    }
+
+    // -----------------------------------------
+    // DATE FILTER
+    // -----------------------------------------
+
+    if (date) {
+      const selectedDate = new Date(
+        `${date}T00:00:00.000`
+      );
+
+      if (Number.isNaN(selectedDate.getTime())) {
+        return res.status(400).json({
+          message: "Invalid date format",
+        });
+      }
+
+      const nextDate = new Date(selectedDate);
+      nextDate.setDate(
+        nextDate.getDate() + 1
+      );
+
+      filter.createdAt = {
+        $gte: selectedDate,
+        $lt: nextDate,
+      };
+    }
+
+    // -----------------------------------------
+    // PAGINATION
+    // -----------------------------------------
 
     const totalComments =
-  await ProjectComment.countDocuments(filter);
+      await ProjectComment.countDocuments(filter);
 
     const totalPages =
       totalComments === 0
@@ -58,8 +99,12 @@ if (commenterId) {
     const skip =
       (currentPage - 1) * limit;
 
+    // -----------------------------------------
+    // FETCH COMMENTS
+    // -----------------------------------------
+
     const comments =
-  await ProjectComment.find(filter)
+      await ProjectComment.find(filter)
         .populate(
           "createdBy",
           "name userCode email"
@@ -69,6 +114,10 @@ if (commenterId) {
         })
         .skip(skip)
         .limit(limit);
+
+    // -----------------------------------------
+    // RESPONSE
+    // -----------------------------------------
 
     res.status(200).json({
       comments,

@@ -18,10 +18,18 @@ function ProjectComments() {
   const [error, setError] = useState("");
 
   const [page, setPage] = useState(1);
+
+  // -----------------------------------------
+  // FILTERS
+  // -----------------------------------------
+
   const [commenterId, setCommenterId] = useState("");
-const [commenterName, setCommenterName] = useState("");
-const [commenters, setCommenters] = useState([]);
-const [commentersLoading, setCommentersLoading] = useState(false);
+  const [commenterName, setCommenterName] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const [commenters, setCommenters] = useState([]);
+  const [commentersLoading, setCommentersLoading] =
+    useState(false);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -32,14 +40,37 @@ const [commentersLoading, setCommentersLoading] = useState(false);
     hasPreviousPage: false,
   });
 
+  // -----------------------------------------
+  // COMMENT FORM
+  // -----------------------------------------
+
   const [commentText, setCommentText] = useState("");
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] =
+    useState(false);
 
-  const [editingCommentId, setEditingCommentId] = useState(null);
-  const [editingCommentText, setEditingCommentText] = useState("");
-  const [commentUpdating, setCommentUpdating] = useState(false);
+  // -----------------------------------------
+  // EDIT COMMENT
+  // -----------------------------------------
 
-  const [commentDeletingId, setCommentDeletingId] = useState(null);
+  const [editingCommentId, setEditingCommentId] =
+    useState(null);
+
+  const [editingCommentText, setEditingCommentText] =
+    useState("");
+
+  const [commentUpdating, setCommentUpdating] =
+    useState(false);
+
+  // -----------------------------------------
+  // DELETE COMMENT
+  // -----------------------------------------
+
+  const [commentDeletingId, setCommentDeletingId] =
+    useState(null);
+
+  // -----------------------------------------
+  // CHECK COMMENT AUTHOR
+  // -----------------------------------------
 
   const isCommentAuthor = (comment) => {
     return (
@@ -50,11 +81,17 @@ const [commentersLoading, setCommentersLoading] = useState(false);
     );
   };
 
+  // -----------------------------------------
+  // FORMAT TIME AGO
+  // -----------------------------------------
+
   const formatTimeAgo = (date) => {
     const now = new Date();
     const created = new Date(date);
 
-    const seconds = Math.floor((now - created) / 1000);
+    const seconds = Math.floor(
+      (now - created) / 1000
+    );
 
     if (seconds < 60) {
       return "just now";
@@ -87,50 +124,60 @@ const [commentersLoading, setCommentersLoading] = useState(false);
     return created.toLocaleDateString();
   };
 
+  // -----------------------------------------
+  // FETCH COMMENTERS
+  // -----------------------------------------
 
   const fetchCommenters = async () => {
-  if (!projectId) {
-    return;
-  }
-
-  try {
-    setCommentersLoading(true);
-
-    const project = await getProjectById(projectId);
-
-    const users = [];
-
-    if (project?.owner?._id) {
-      users.push(project.owner);
+    if (!projectId) {
+      return;
     }
 
-    if (Array.isArray(project?.members)) {
-      users.push(...project.members);
+    try {
+      setCommentersLoading(true);
+
+      const project =
+        await getProjectById(projectId);
+
+      const users = [];
+
+      if (project?.owner?._id) {
+        users.push(project.owner);
+      }
+
+      if (Array.isArray(project?.members)) {
+        users.push(...project.members);
+      }
+
+      const uniqueUsers = Array.from(
+        new Map(
+          users.map((member) => [
+            member._id.toString(),
+            member,
+          ])
+        ).values()
+      );
+
+      uniqueUsers.sort((a, b) =>
+        (a.name || "").localeCompare(
+          b.name || ""
+        )
+      );
+
+      setCommenters(uniqueUsers);
+    } catch (error) {
+      console.error(
+        "Failed to load project commenters:",
+        error
+      );
+    } finally {
+      setCommentersLoading(false);
     }
+  };
 
-    const uniqueUsers = Array.from(
-      new Map(
-        users.map((member) => [
-          member._id.toString(),
-          member,
-        ])
-      ).values()
-    );
-
-    uniqueUsers.sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "")
-    );
-
-    setCommenters(uniqueUsers);
-  } catch (error) {
-    console.error(
-      "Failed to load project commenters:",
-      error
-    );
-  } finally {
-    setCommentersLoading(false);
-  }
-};
+  // -----------------------------------------
+  // FETCH COMMENTS
+  // -----------------------------------------
 
   const fetchComments = async () => {
     try {
@@ -141,7 +188,8 @@ const [commentersLoading, setCommentersLoading] = useState(false);
         projectId,
         page,
         10,
-         commenterId
+        commenterId,
+        selectedDate
       );
 
       setComments(data.comments || []);
@@ -171,17 +219,34 @@ const [commentersLoading, setCommentersLoading] = useState(false);
     }
   };
 
- useEffect(() => {
-  if (projectId) {
-    fetchCommenters();
-  }
-}, [projectId]);
+  // -----------------------------------------
+  // LOAD COMMENTERS
+  // -----------------------------------------
 
-useEffect(() => {
-  if (projectId) {
-    fetchComments();
-  }
-}, [projectId, page, commenterId]);
+  useEffect(() => {
+    if (projectId) {
+      fetchCommenters();
+    }
+  }, [projectId]);
+
+  // -----------------------------------------
+  // LOAD COMMENTS
+  // -----------------------------------------
+
+  useEffect(() => {
+    if (projectId) {
+      fetchComments();
+    }
+  }, [
+    projectId,
+    page,
+    commenterId,
+    selectedDate,
+  ]);
+
+  // -----------------------------------------
+  // ADD COMMENT
+  // -----------------------------------------
 
   const handleAddComment = async (event) => {
     event.preventDefault();
@@ -203,10 +268,11 @@ useEffect(() => {
 
       setCommentText("");
 
-      // Return to first page so the newest comment is visible.
+      // Return to first page so the newest
+      // comment is visible.
       setPage(1);
 
-      // Explicitly reload comments.
+      // If already on page 1, explicitly reload.
       if (page === 1) {
         await fetchComments();
       }
@@ -225,8 +291,15 @@ useEffect(() => {
     }
   };
 
-  const handleEditComment = async (commentId) => {
-    const comment = editingCommentText.trim();
+  // -----------------------------------------
+  // EDIT COMMENT
+  // -----------------------------------------
+
+  const handleEditComment = async (
+    commentId
+  ) => {
+    const comment =
+      editingCommentText.trim();
 
     if (!comment) {
       return;
@@ -261,7 +334,13 @@ useEffect(() => {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
+  // -----------------------------------------
+  // DELETE COMMENT
+  // -----------------------------------------
+
+  const handleDeleteComment = async (
+    commentId
+  ) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this comment?"
     );
@@ -295,7 +374,34 @@ useEffect(() => {
     }
   };
 
-  if (loading && comments.length === 0) {
+  // -----------------------------------------
+  // CLEAR DATE FILTER
+  // -----------------------------------------
+
+  const handleClearDate = () => {
+    setSelectedDate("");
+    setPage(1);
+  };
+
+  // -----------------------------------------
+  // CLEAR ALL FILTERS
+  // -----------------------------------------
+
+  const handleClearAllFilters = () => {
+    setCommenterId("");
+    setCommenterName("");
+    setSelectedDate("");
+    setPage(1);
+  };
+
+  // -----------------------------------------
+  // LOADING SCREEN
+  // -----------------------------------------
+
+  if (
+    loading &&
+    comments.length === 0
+  ) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
@@ -313,6 +419,10 @@ useEffect(() => {
       </div>
     );
   }
+
+  // -----------------------------------------
+  // UI
+  // -----------------------------------------
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
@@ -337,79 +447,137 @@ useEffect(() => {
           </h1>
 
           <p className="mt-2 text-sm text-slate-400">
-            View and discuss comments with your project team.
+            View and discuss comments with your
+            project team.
           </p>
         </div>
 
-        {/* Filter */}
-<section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        {/* -----------------------------------
+            FILTERS
+        ----------------------------------- */}
 
-    <div className="flex-1">
-      <label
-        htmlFor="project-commenter-filter"
-        className="text-xs font-medium uppercase tracking-wide text-slate-500"
-      >
-        Filter by commenter
-      </label>
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
 
-      <select
-        id="project-commenter-filter"
-        value={commenterId}
-        onChange={(event) => {
-          const selectedId =
-            event.target.value;
+            {/* Commenter Filter */}
+            <div>
+              <label
+                htmlFor="project-commenter-filter"
+                className="text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                Filter by commenter
+              </label>
 
-          setCommenterId(selectedId);
+              <select
+                id="project-commenter-filter"
+                value={commenterId}
+                onChange={(event) => {
+                  const selectedId =
+                    event.target.value;
 
-          const selectedUser =
-            commenters.find(
-              (member) =>
-                member._id?.toString() ===
-                selectedId
-            );
+                  setCommenterId(selectedId);
 
-          setCommenterName(
-            selectedUser?.name || ""
-          );
+                  const selectedUser =
+                    commenters.find(
+                      (member) =>
+                        member._id?.toString() ===
+                        selectedId
+                    );
 
-          setPage(1);
-        }}
-        disabled={commentersLoading}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <option value="">
-          {commentersLoading
-            ? "Loading commenters..."
-            : "All commenters"}
-        </option>
+                  setCommenterName(
+                    selectedUser?.name || ""
+                  );
 
-        {commenters.map((member) => (
-          <option
-            key={member._id}
-            value={member._id}
-          >
-            {member.name || "Unknown User"}
-          </option>
-        ))}
-      </select>
-    </div>
+                  setPage(1);
+                }}
+                disabled={commentersLoading}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {commentersLoading
+                    ? "Loading commenters..."
+                    : "All commenters"}
+                </option>
 
-    {commenterId && (
-      <button
-        type="button"
-        onClick={() => {
-          setCommenterId("");
-          setCommenterName("");
-          setPage(1);
-        }}
-        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-      >
-        Clear Filter
-      </button>
-    )}
-  </div>
-</section>
+                {commenters.map((member) => (
+                  <option
+                    key={member._id}
+                    value={member._id}
+                  >
+                    {member.name ||
+                      "Unknown User"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Filter */}
+            <div>
+              <label
+                htmlFor="project-comment-date-filter"
+                className="text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                Filter by date
+              </label>
+
+              <input
+                id="project-comment-date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={(event) => {
+                  setSelectedDate(
+                    event.target.value
+                  );
+                  setPage(1);
+                }}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+              />
+            </div>
+          </div>
+
+          {/* Filter Actions */}
+          {(commenterId || selectedDate) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+
+              {commenterId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCommenterId("");
+                    setCommenterName("");
+                    setPage(1);
+                  }}
+                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                >
+                  Clear commenter
+                </button>
+              )}
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={handleClearDate}
+                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                >
+                  Clear date
+                </button>
+              )}
+
+              {commenterId &&
+                selectedDate && (
+                  <button
+                    type="button"
+                    onClick={
+                      handleClearAllFilters
+                    }
+                    className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+            </div>
+          )}
+        </section>
 
         {/* Error */}
         {error && (
@@ -426,6 +594,28 @@ useEffect(() => {
               {pagination.totalComments === 1
                 ? "comment"
                 : "comments"}
+
+              {commenterName && (
+                <>
+                  {" "}
+                  by{" "}
+                  <span className="text-slate-300">
+                    {commenterName}
+                  </span>
+                </>
+              )}
+
+              {selectedDate && (
+                <>
+                  {" "}
+                  on{" "}
+                  <span className="text-slate-300">
+                    {new Date(
+                      `${selectedDate}T00:00:00`
+                    ).toLocaleDateString()}
+                  </span>
+                </>
+              )}
             </p>
           </div>
         )}
@@ -436,151 +626,168 @@ useEffect(() => {
           comments.length === 0 && (
             <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
               <h3 className="text-lg font-semibold">
-                No comments yet
+                No comments found
               </h3>
 
               <p className="mt-2 text-sm text-slate-500">
-                Be the first person to comment on this project.
+                {selectedDate
+                  ? "There are no comments for the selected date."
+                  : "Be the first person to comment on this project."}
               </p>
             </div>
           )}
 
         {/* Comments */}
-        {!error && comments.length > 0 && (
-          <div className="mt-5 space-y-4">
-            {comments.map((comment) => (
-              <div
-                key={comment._id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
-              >
-                <div className="flex gap-4">
+        {!error &&
+          comments.length > 0 && (
+            <div className="mt-5 space-y-4">
+              {comments.map((comment) => (
+                <div
+                  key={comment._id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
+                >
+                  <div className="flex gap-4">
 
-                  {/* Avatar */}
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
-                    {comment.createdBy?.name
-                      ?.charAt(0)
-                      ?.toUpperCase() || "U"}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-
-                    {/* Header */}
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-slate-300">
-                        <span className="font-semibold text-white">
-                          {comment.createdBy?.name ||
-                            "Unknown User"}
-                        </span>{" "}
-                        commented
-                      </p>
-
-                      <p className="shrink-0 text-xs text-slate-600">
-                        {formatTimeAgo(comment.createdAt)}
-                      </p>
+                    {/* Avatar */}
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
+                      {comment.createdBy?.name
+                        ?.charAt(0)
+                        ?.toUpperCase() || "U"}
                     </div>
 
-                    {/* Edit */}
-                    {editingCommentId === comment._id ? (
-                      <div className="mt-3">
-                        <textarea
-                          value={editingCommentText}
-                          onChange={(event) =>
-                            setEditingCommentText(
-                              event.target.value
-                            )
-                          }
-                          rows={4}
-                          maxLength={1000}
-                          className="w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/50"
-                        />
+                    <div className="min-w-0 flex-1">
 
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleEditComment(
-                                comment._id
+                      {/* Header */}
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-300">
+                          <span className="font-semibold text-white">
+                            {comment.createdBy
+                              ?.name ||
+                              "Unknown User"}
+                          </span>{" "}
+                          commented
+                        </p>
+
+                        <p className="shrink-0 text-xs text-slate-600">
+                          {formatTimeAgo(
+                            comment.createdAt
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Edit */}
+                      {editingCommentId ===
+                      comment._id ? (
+                        <div className="mt-3">
+                          <textarea
+                            value={
+                              editingCommentText
+                            }
+                            onChange={(event) =>
+                              setEditingCommentText(
+                                event.target.value
                               )
                             }
-                            disabled={
-                              commentUpdating ||
-                              !editingCommentText.trim()
-                            }
-                            className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400 disabled:opacity-50"
-                          >
-                            {commentUpdating
-                              ? "Saving..."
-                              : "Save"}
-                          </button>
+                            rows={4}
+                            maxLength={1000}
+                            className="w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-indigo-500/50"
+                          />
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingCommentId(null);
-                              setEditingCommentText("");
-                            }}
-                            disabled={commentUpdating}
-                            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/5 hover:text-white"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Comment */}
-                        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                          <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
-                            {comment.content}
-                          </p>
-                        </div>
-
-                        {/* Author controls */}
-                        {isCommentAuthor(comment) && (
-                          <div className="mt-2 flex flex-wrap gap-3">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingCommentId(
-                                  comment._id
-                                );
-                                setEditingCommentText(
-                                  comment.content
-                                );
-                              }}
-                              className="text-xs font-medium text-slate-500 hover:text-indigo-300"
-                            >
-                              Edit
-                            </button>
-
+                          <div className="mt-2 flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() =>
-                                handleDeleteComment(
+                                handleEditComment(
                                   comment._id
                                 )
                               }
                               disabled={
-                                commentDeletingId ===
-                                comment._id
+                                commentUpdating ||
+                                !editingCommentText.trim()
                               }
-                              className="text-xs font-medium text-slate-500 hover:text-red-300 disabled:opacity-50"
+                              className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400 disabled:opacity-50"
                             >
-                              {commentDeletingId ===
-                              comment._id
-                                ? "Deleting..."
-                                : "Delete"}
+                              {commentUpdating
+                                ? "Saving..."
+                                : "Save"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCommentId(
+                                  null
+                                );
+                                setEditingCommentText(
+                                  ""
+                                );
+                              }}
+                              disabled={
+                                commentUpdating
+                              }
+                              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/5 hover:text-white"
+                            >
+                              Cancel
                             </button>
                           </div>
-                        )}
-                      </>
-                    )}
+                        </div>
+                      ) : (
+                        <>
+                          {/* Comment */}
+                          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                            <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
+                              {comment.content}
+                            </p>
+                          </div>
+
+                          {/* Author Controls */}
+                          {isCommentAuthor(
+                            comment
+                          ) && (
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCommentId(
+                                    comment._id
+                                  );
+                                  setEditingCommentText(
+                                    comment.content
+                                  );
+                                }}
+                                className="text-xs font-medium text-slate-500 hover:text-indigo-300"
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDeleteComment(
+                                    comment._id
+                                  )
+                                }
+                                disabled={
+                                  commentDeletingId ===
+                                  comment._id
+                                }
+                                className="text-xs font-medium text-slate-500 hover:text-red-300 disabled:opacity-50"
+                              >
+                                {commentDeletingId ===
+                                comment._id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
         {/* Pagination */}
         {!loading &&
@@ -588,7 +795,8 @@ useEffect(() => {
           pagination.totalPages > 1 && (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-500">
-                Page {pagination.currentPage} of{" "}
+                Page{" "}
+                {pagination.currentPage} of{" "}
                 {pagination.totalPages}
               </p>
 
@@ -614,7 +822,9 @@ useEffect(() => {
                     !pagination.hasNextPage
                   }
                   onClick={() =>
-                    setPage((current) => current + 1)
+                    setPage(
+                      (current) => current + 1
+                    )
                   }
                   className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-40"
                 >
@@ -647,7 +857,8 @@ useEffect(() => {
 
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-slate-600">
-                {commentText.length}/1000 characters
+                {commentText.length}/1000
+                characters
               </p>
 
               <button

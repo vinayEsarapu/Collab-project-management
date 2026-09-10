@@ -151,7 +151,8 @@ export const getProjectComments = async (
   projectId,
   page = 1,
   limit = 10,
-  commenterId = ""
+  commenterId = "",
+  date = ""
 ) => {
   const response = await api.get(
     `/projects/${projectId}/comments`,
@@ -162,13 +163,15 @@ export const getProjectComments = async (
         ...(commenterId
           ? { commenterId }
           : {}),
+        ...(date
+          ? { date }
+          : {}),
       },
     }
   );
 
   return response.data;
 };
-
 export const createProjectComment = async (
   projectId,
   content

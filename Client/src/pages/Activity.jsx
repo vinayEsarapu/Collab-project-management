@@ -1,21 +1,40 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getIssueActivities ,  getTaskActivities,  deleteActivity,} from "../services/activityService";
+import { Link, useLocation, useParams } from "react-router-dom";
+import {
+  getIssueActivities,
+  getTaskActivities,
+  deleteActivity,
+} from "../services/activityService";
+import { useAuth } from "../context/Authcontext";
+import { getProjectById } from "../services/projectservices";
 
 function Activity() {
-  const { id: projectId,  taskId, issueId } = useParams();
+  const { id: projectId, taskId, issueId } = useParams();
+
+  const location = useLocation();
+  const { user } = useAuth();
 
   const [activities, setActivities] = useState([]);
   const [issue, setIssue] = useState(null);
+  const [project, setProject] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deletingActivityId, setDeletingActivityId] =
-  useState(null);
 
+  const [deletingActivityId, setDeletingActivityId] = useState(null);
+
+  // Delete confirmation modal
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
+
+  // Application notification
+  const [notification, setNotification] = useState(null);
+
+  // Date filter
   const [selectedDate, setSelectedDate] = useState("");
 
   const [page, setPage] = useState(1);
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 0,
@@ -25,27 +44,65 @@ function Activity() {
     hasPreviousPage: false,
   });
 
-  
+  /*
+   * Load project information.
+   * This is required to determine whether the logged-in
+   * user is the project owner.
+   */
+  const fetchProject = async () => {
+    if (!projectId) return;
+
+    try {
+      const data = await getProjectById(projectId);
+      setProject(data);
+    } catch (error) {
+      console.error("Failed to load project:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (projectId) {
+      fetchProject();
+    }
+  }, [projectId]);
+
+  /*
+   * Check whether the logged-in user is the project owner.
+   *
+   * Delete authority is intentionally restricted to the owner.
+   */
+  const isProjectOwner = Boolean(
+    user?._id &&
+      project?.owner?._id &&
+      user._id.toString() === project.owner._id.toString()
+  );
+
+  /*
+   * Fetch activities for either:
+   * - task level
+   * - issue level
+   */
   const fetchActivities = async () => {
     try {
       setLoading(true);
       setError("");
 
-     const data = taskId
-  ? await getTaskActivities(
-      taskId,
-      page,
-      10,
-      selectedDate
-    )
-  : await getIssueActivities(
-      issueId,
-      page,
-      10,
-      selectedDate
-    );
+      const data = taskId
+        ? await getTaskActivities(
+            taskId,
+            page,
+            10,
+            selectedDate
+          )
+        : await getIssueActivities(
+            issueId,
+            page,
+            10,
+            selectedDate
+          );
 
       setActivities(data.activities || []);
+
       setPagination(
         data.pagination || {
           currentPage: 1,
@@ -70,12 +127,36 @@ function Activity() {
     }
   };
 
+  /*
+   * Fetch activities whenever:
+   * - task changes
+   * - issue changes
+   * - page changes
+   * - date filter changes
+   */
   useEffect(() => {
-    if ( taskId || issueId) {
+    if (taskId || issueId) {
       fetchActivities();
     }
   }, [taskId, issueId, page, selectedDate]);
 
+  /*
+   * Automatically remove application notification
+   * after 3 seconds.
+   */
+  useEffect(() => {
+    if (!notification) return;
+
+    const timer = setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [notification]);
+
+  /*
+   * Date filter
+   */
   const handleDateChange = (event) => {
     setSelectedDate(event.target.value);
     setPage(1);
@@ -86,44 +167,87 @@ function Activity() {
     setPage(1);
   };
 
-  const handleDeleteActivity = async (activityId) => {
-  const confirmed = window.confirm(
-    "Delete this activity log? This action cannot be undone."
-  );
+  /*
+   * Open delete confirmation modal.
+   *
+   * The owner check is also done here so that even if this
+   * function is triggered unexpectedly, members cannot
+   * continue with the delete flow.
+   */
+  const openDeleteConfirmation = (activityId) => {
+    if (!isProjectOwner) {
+      setNotification({
+        type: "error",
+        message:
+          "Only the project owner can delete activity logs.",
+      });
+      return;
+    }
 
-  if (!confirmed) return;
+    setSelectedActivityId(activityId);
+    setShowDeleteConfirm(true);
+  };
 
-  try {
-    setDeletingActivityId(activityId);
-    setError("");
+  /*
+   * Close delete confirmation modal.
+   */
+  const closeDeleteConfirmation = () => {
+    if (deletingActivityId) return;
 
-    await deleteActivity(activityId);
+    setShowDeleteConfirm(false);
+    setSelectedActivityId(null);
+  };
 
-    // Remove immediately from current page
-    setActivities((currentActivities) =>
-      currentActivities.filter(
-        (activity) => activity._id !== activityId
-      )
-    );
+  /*
+   * Delete activity after owner confirms through
+   * the application modal.
+   */
+  const handleDeleteActivity = async () => {
+    if (!selectedActivityId || !isProjectOwner) {
+      return;
+    }
 
-    // Update displayed total
-    setPagination((current) => ({
-      ...current,
-      totalActivities: Math.max(
-        current.totalActivities - 1,
-        0
-      ),
-    }));
-  } catch (error) {
-    setError(
-      error.response?.data?.message ||
-        "Failed to delete activity."
-    );
-  } finally {
-    setDeletingActivityId(null);
-  }
-};
+    try {
+      setDeletingActivityId(selectedActivityId);
+      setError("");
 
+      await deleteActivity(selectedActivityId);
+
+      /*
+       * Close modal first.
+       */
+      setShowDeleteConfirm(false);
+      setSelectedActivityId(null);
+
+      /*
+       * Show application notification instead of
+       * browser alert/confirm.
+       */
+      setNotification({
+        type: "success",
+        message: "Activity log deleted successfully.",
+      });
+
+      /*
+       * Reload activities so pagination and total count
+       * remain accurate.
+       */
+      await fetchActivities();
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to delete activity log.",
+      });
+    } finally {
+      setDeletingActivityId(null);
+    }
+  };
+
+  /*
+   * Format activity date/time.
+   */
   const formatDate = (date) => {
     return new Date(date).toLocaleString([], {
       dateStyle: "medium",
@@ -131,6 +255,58 @@ function Activity() {
     });
   };
 
+  /*
+   * Determine where the Back button should go.
+   *
+   * Important:
+   *
+   * Task-level issue details -> Activity
+   * Activity -> exact Issue Details page
+   *
+   * We receive issueDetailsPath from issueDetails.jsx.
+   */
+  const getBackPath = () => {
+    if (location.state?.from === "issue-details") {
+      return location.state.issueDetailsPath;
+    }
+
+    if (taskId) {
+      return `/projects/${projectId}/tasks/${taskId}`;
+    }
+
+    return `/projects/${projectId}/issues/${issueId}`;
+  };
+
+  /*
+   * Preserve the original navigation state.
+   *
+   * Example:
+   *
+   * Profile
+   *   ↓
+   * Task Issue Details
+   *   ↓
+   * Activity
+   *   ↓
+   * Back
+   *   ↓
+   * Task Issue Details
+   *   ↓
+   * Back
+   *   ↓
+   * Profile
+   */
+  const getBackState = () => {
+    if (location.state?.from === "issue-details") {
+      return location.state.parentState;
+    }
+
+    return undefined;
+  };
+
+  /*
+   * Convert activity action into readable text.
+   */
   const formatAction = (activity) => {
     const details = activity.details || {};
 
@@ -160,85 +336,81 @@ function Activity() {
           details.from || "Unknown"
         } to ${details.to || "Unknown"}`;
 
-         case "COMMENT_ADDED":
-      return "added a comment";
+      case "COMMENT_ADDED":
+        return "added a comment";
 
-    case "COMMENT_UPDATED":
-      return "updated a comment";
+      case "COMMENT_UPDATED":
+        return "updated a comment";
 
-    case "COMMENT_DELETED":
-      return "deleted a comment";
+      case "COMMENT_DELETED":
+        return "deleted a comment";
 
       case "TASK_CREATED":
-  return "created this task";
+        return "created this task";
 
-case "TASK_UPDATED":
-  return "updated this task";
+      case "TASK_UPDATED":
+        return "updated this task";
 
-case "TASK_DELETED":
-  return "deleted this task";
+      case "TASK_DELETED":
+        return "deleted this task";
 
-case "TASK_ASSIGNED":
-  return "assigned this task";
+      case "TASK_ASSIGNED":
+        return "assigned this task";
 
-case "TASK_REASSIGNED":
-  return "reassigned this task";
+      case "TASK_REASSIGNED":
+        return "reassigned this task";
 
-case "TASK_UNASSIGNED":
-  return "removed the task assignment";
+      case "TASK_UNASSIGNED":
+        return "removed the task assignment";
 
-case "TASK_STATUS_CHANGED":
-  return `changed status from ${
-    details.from || "Unknown"
-  } to ${details.to || "Unknown"}`;
+      case "TASK_STATUS_CHANGED":
+        return `changed status from ${
+          details.from || "Unknown"
+        } to ${details.to || "Unknown"}`;
 
-case "TASK_PRIORITY_CHANGED":
-  return `changed priority from ${
-    details.from || "Unknown"
-  } to ${details.to || "Unknown"}`;
+      case "TASK_PRIORITY_CHANGED":
+        return `changed priority from ${
+          details.from || "Unknown"
+        } to ${details.to || "Unknown"}`;
 
       default:
-  return taskId
-    ? "updated this task"
-    : "updated this issue";
+        return taskId
+          ? "updated this task"
+          : "updated this issue";
     }
   };
 
-  
+  return (
+    <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
 
+        {/* Back */}
+        <Link
+          to={getBackPath()}
+          state={getBackState()}
+          className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+        >
+          ← Back
+        </Link>
 
-    return (
-  <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
-    <div className="mx-auto max-w-5xl">
+        {/* Header */}
+        <div className="mt-6">
+          <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
+            {taskId ? "Task Activity" : "Issue Activity"}
+          </p>
 
-      <Link
-        to={
-          taskId
-            ? `/projects/${projectId}/tasks/${taskId}`
-            : `/projects/${projectId}/issues/${issueId}`
-        }
-        className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
-      >
-        ← Back
-      </Link>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">
+            {taskId
+              ? "Task Activity / Audit Log"
+              : "Activity / Audit Log"}
+          </h1>
 
-      <div className="mt-6">
-        <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
-          {taskId ? "Task Activity" : "Issue Activity"}
-        </p>
-
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">
-          {taskId
-            ? "Task Activity / Audit Log"
-            : "Activity / Audit Log"}
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-400">
-         {taskId
-  ? "Track important changes made to this task."
-  : "Track important changes made to this issue."}
-        </p>
-      </div>
+          <p className="mt-2 text-sm text-slate-400">
+            {taskId
+              ? "Track important changes made to this task."
+              : "Track important changes made to this issue."}
+          </p>
+        </div>
 
         {/* Date filter */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
@@ -335,6 +507,7 @@ case "TASK_PRIORITY_CHANGED":
                 >
                   <div className="flex gap-4">
 
+                    {/* User avatar */}
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
                       {activity.user?.name
                         ?.charAt(0)
@@ -342,7 +515,9 @@ case "TASK_PRIORITY_CHANGED":
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+                        {/* Activity description */}
                         <p className="text-sm text-slate-300">
                           <span className="font-semibold text-white">
                             {activity.user?.name ||
@@ -351,29 +526,36 @@ case "TASK_PRIORITY_CHANGED":
                           {formatAction(activity)}
                         </p>
 
+                        {/* Date + Delete */}
                         <div className="flex shrink-0 items-center gap-3">
-  <p className="text-xs text-slate-600">
-    {formatDate(activity.createdAt)}
-  </p>
+                          <p className="text-xs text-slate-600">
+                            {formatDate(activity.createdAt)}
+                          </p>
 
-  <button
-    type="button"
-    onClick={() =>
-      handleDeleteActivity(activity._id)
-    }
-    disabled={
-      deletingActivityId === activity._id
-    }
-    className="rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
-  >
-    {deletingActivityId === activity._id
-      ? "Deleting..."
-      : "Delete"}
-  </button>
-</div>
+                          {/* Delete ONLY for project owner */}
+                          {isProjectOwner && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openDeleteConfirmation(
+                                  activity._id
+                                )
+                              }
+                              disabled={
+                                deletingActivityId ===
+                                activity._id
+                              }
+                              className="rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {deletingActivityId ===
+                              activity._id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
                   </div>
                 </div>
               ))}
@@ -425,6 +607,79 @@ case "TASK_PRIORITY_CHANGED":
             </div>
           )}
       </div>
+
+      {/* =====================================================
+          APPLICATION NOTIFICATION
+          ===================================================== */}
+      {notification && (
+        <div className="fixed right-4 top-4 z-[70] w-[calc(100%-2rem)] max-w-sm">
+          <div
+            className={`rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-sm ${
+              notification.type === "success"
+                ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                : "border-red-400/20 bg-red-500/10 text-red-300"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-medium">
+                {notification.message}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setNotification(null)}
+                className="text-xs opacity-60 transition hover:opacity-100"
+                aria-label="Close notification"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          DELETE CONFIRMATION MODAL
+          ===================================================== */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                Delete activity log?
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                This activity log will be permanently deleted.
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeDeleteConfirmation}
+                disabled={Boolean(deletingActivityId)}
+                className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteActivity}
+                disabled={Boolean(deletingActivityId)}
+                className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {deletingActivityId
+                  ? "Deleting..."
+                  : "Delete Activity"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

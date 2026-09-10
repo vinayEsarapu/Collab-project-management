@@ -28,15 +28,29 @@ function Comments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Name filter
+  // --------------------------------------------------
+  // Commenter filter
+  // --------------------------------------------------
+
   const [name, setName] = useState("");
   const [commenterId, setCommenterId] = useState("");
   const [commenters, setCommenters] = useState([]);
   const [commentersLoading, setCommentersLoading] =
     useState(false);
 
+  // --------------------------------------------------
+  // Date filter
+  // --------------------------------------------------
+
+  const [selectedDate, setSelectedDate] =
+    useState("");
+
+  // --------------------------------------------------
   // Pagination
+  // --------------------------------------------------
+
   const [page, setPage] = useState(1);
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 0,
@@ -46,20 +60,31 @@ function Comments() {
     hasPreviousPage: false,
   });
 
+  // --------------------------------------------------
   // New comment
+  // --------------------------------------------------
+
   const [commentText, setCommentText] = useState("");
   const [commentSubmitting, setCommentSubmitting] =
     useState(false);
 
+  // --------------------------------------------------
   // Edit comment
+  // --------------------------------------------------
+
   const [editingCommentId, setEditingCommentId] =
     useState(null);
+
   const [editingCommentText, setEditingCommentText] =
     useState("");
+
   const [commentUpdating, setCommentUpdating] =
     useState(false);
 
+  // --------------------------------------------------
   // Delete comment
+  // --------------------------------------------------
+
   const [commentDeletingId, setCommentDeletingId] =
     useState(null);
 
@@ -71,19 +96,7 @@ function Comments() {
     location.state?.from === "profile";
 
   /*
-   * Preserve profile context when moving back to
-   * the issue/task page.
-   *
-   * Example:
-   *
-   * Profile
-   *   → Task
-   *   → Task Issues
-   *   → Issue
-   *   → Comments
-   *
-   * If we go back to Issue Details, Issue Details
-   * still knows that the original source was Profile.
+   * Preserve profile context when moving back.
    */
   const parentNavigationState = cameFromProfile
     ? {
@@ -98,9 +111,6 @@ function Comments() {
   const getBackPath = () => {
     /*
      * Profile → ... → Comments
-     *
-     * When the user originally came from Profile,
-     * go directly back to Profile.
      */
     if (cameFromProfile) {
       return "/profile";
@@ -109,10 +119,7 @@ function Comments() {
     /*
      * Task-level issue comments
      *
-     * Normal navigation:
      * Task Issues → Issue Details → Comments
-     *
-     * So Back should return to Issue Details.
      */
     if (taskId && issueId) {
       return `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`;
@@ -121,7 +128,6 @@ function Comments() {
     /*
      * Task-level comments
      *
-     * Normal navigation:
      * Task → Comments
      */
     if (taskId) {
@@ -131,7 +137,6 @@ function Comments() {
     /*
      * Project-level issue comments
      *
-     * Normal navigation:
      * Issue Details → Comments
      */
     return `/projects/${projectId}/issues/${issueId}`;
@@ -262,7 +267,8 @@ function Comments() {
         10,
         name,
         taskId,
-        commenterId
+        commenterId,
+        selectedDate
       );
 
       setComments(data.comments || []);
@@ -307,7 +313,22 @@ function Comments() {
     page,
     name,
     commenterId,
+    selectedDate,
   ]);
+
+  // --------------------------------------------------
+  // Date filter
+  // --------------------------------------------------
+
+  const handleDateChange = (event) => {
+    setSelectedDate(event.target.value);
+    setPage(1);
+  };
+
+  const clearDateFilter = () => {
+    setSelectedDate("");
+    setPage(1);
+  };
 
   // --------------------------------------------------
   // Commenter filter
@@ -495,12 +516,17 @@ function Comments() {
           </p>
         </div>
 
-        {/* Filter */}
+        {/* =================================================
+            FILTERS
+            ================================================= */}
 
         <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
 
-            <div className="flex-1">
+          <div className="grid gap-4 md:grid-cols-2">
+
+            {/* Commenter filter */}
+
+            <div>
               <label
                 htmlFor="commenter-filter"
                 className="text-xs font-medium uppercase tracking-wide text-slate-500"
@@ -533,17 +559,69 @@ function Comments() {
               </select>
             </div>
 
-            {commenterId && (
-              <button
-                type="button"
-                onClick={clearCommenterFilter}
-                className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+            {/* Calendar date filter */}
+
+            <div>
+              <label
+                htmlFor="comment-date-filter"
+                className="text-xs font-medium uppercase tracking-wide text-slate-500"
               >
-                Clear Filter
-              </button>
-            )}
+                Filter by date
+              </label>
+
+              <input
+                id="comment-date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+              />
+            </div>
 
           </div>
+
+          {/* Clear filters */}
+
+          {(commenterId || selectedDate) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+
+              {commenterId && (
+                <button
+                  type="button"
+                  onClick={clearCommenterFilter}
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                >
+                  Clear commenter
+                </button>
+              )}
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={clearDateFilter}
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                >
+                  Clear date
+                </button>
+              )}
+
+              {commenterId && selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCommenterId("");
+                    setName("");
+                    setSelectedDate("");
+                    setPage(1);
+                  }}
+                  className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20"
+                >
+                  Clear all filters
+                </button>
+              )}
+
+            </div>
+          )}
         </section>
 
         {/* Error */}
@@ -558,6 +636,7 @@ function Comments() {
 
         {!error && (
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
             <p className="text-sm text-slate-400">
               {pagination.totalComments}{" "}
               {pagination.totalComments === 1
@@ -565,11 +644,22 @@ function Comments() {
                 : "comments"}
             </p>
 
-            {commenterId && name && (
-              <p className="text-xs text-indigo-400">
-                Showing comments by "{name}"
-              </p>
-            )}
+            <div className="flex flex-col gap-1 sm:items-end">
+
+              {commenterId && name && (
+                <p className="text-xs text-indigo-400">
+                  Showing comments by "{name}"
+                </p>
+              )}
+
+              {selectedDate && (
+                <p className="text-xs text-indigo-400">
+                  Showing comments from{" "}
+                  {selectedDate}
+                </p>
+              )}
+
+            </div>
           </div>
         )}
 
@@ -579,25 +669,34 @@ function Comments() {
           !error &&
           comments.length === 0 && (
             <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
+
               <h3 className="text-lg font-semibold">
                 No comments found
               </h3>
 
               <p className="mt-2 text-sm text-slate-500">
-                {commenterId && name
+                {selectedDate
+                  ? `No comments found on ${selectedDate}.`
+                  : commenterId && name
                   ? `No comments found by "${name}".`
                   : "No comments have been added yet."}
               </p>
 
-              {commenterId && (
+              {(commenterId || selectedDate) && (
                 <button
                   type="button"
-                  onClick={clearCommenterFilter}
+                  onClick={() => {
+                    setCommenterId("");
+                    setName("");
+                    setSelectedDate("");
+                    setPage(1);
+                  }}
                   className="mt-5 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
                 >
-                  Clear Filter
+                  Clear Filters
                 </button>
               )}
+
             </div>
           )}
 
@@ -605,6 +704,7 @@ function Comments() {
 
         {!error && comments.length > 0 && (
           <div className="mt-5 space-y-4">
+
             {comments.map((comment) => (
               <div
                 key={comment._id}
@@ -627,6 +727,7 @@ function Comments() {
                     {/* Header */}
 
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+
                       <p className="text-sm text-slate-300">
                         <span className="font-semibold text-white">
                           {comment.createdBy?.name ||
@@ -640,6 +741,7 @@ function Comments() {
                           comment.createdAt
                         )}
                       </p>
+
                     </div>
 
                     {/* Edit mode */}
@@ -647,6 +749,7 @@ function Comments() {
                     {editingCommentId ===
                     comment._id ? (
                       <div className="mt-3">
+
                         <textarea
                           value={
                             editingCommentText
@@ -662,6 +765,7 @@ function Comments() {
                         />
 
                         <div className="mt-2 flex flex-wrap gap-2">
+
                           <button
                             type="button"
                             onClick={() =>
@@ -697,10 +801,12 @@ function Comments() {
                           >
                             Cancel
                           </button>
+
                         </div>
                       </div>
                     ) : (
                       <>
+
                         {/* Comment text */}
 
                         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
@@ -715,6 +821,7 @@ function Comments() {
                           comment
                         ) && (
                           <div className="mt-2 flex flex-wrap gap-3">
+
                             <button
                               type="button"
                               onClick={() => {
@@ -748,8 +855,10 @@ function Comments() {
                                 ? "Deleting..."
                                 : "Delete"}
                             </button>
+
                           </div>
                         )}
+
                       </>
                     )}
 
@@ -757,6 +866,7 @@ function Comments() {
                 </div>
               </div>
             ))}
+
           </div>
         )}
 
@@ -766,12 +876,14 @@ function Comments() {
           !error &&
           pagination.totalPages > 1 && (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
               <p className="text-xs text-slate-500">
                 Page {pagination.currentPage} of{" "}
                 {pagination.totalPages}
               </p>
 
               <div className="flex gap-2">
+
                 <button
                   type="button"
                   disabled={
@@ -801,6 +913,7 @@ function Comments() {
                 >
                   Next →
                 </button>
+
               </div>
             </div>
           )}
@@ -808,6 +921,7 @@ function Comments() {
         {/* Add comment */}
 
         <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-6">
+
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
             Add a comment
           </h2>
@@ -816,6 +930,7 @@ function Comments() {
             onSubmit={handleAddComment}
             className="mt-4"
           >
+
             <textarea
               value={commentText}
               onChange={(event) =>
@@ -830,6 +945,7 @@ function Comments() {
             />
 
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
               <p className="text-xs text-slate-600">
                 {commentText.length}/1000
                 characters
@@ -847,9 +963,11 @@ function Comments() {
                   ? "Posting..."
                   : "Post Comment"}
               </button>
+
             </div>
           </form>
         </section>
+
       </div>
     </div>
   );

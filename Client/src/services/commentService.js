@@ -1,13 +1,13 @@
 import api from "./api";
 
-
 export const getComments = async (
   issueId,
   page = 1,
   limit = 10,
   name = "",
   taskId = null,
-  commenterId = ""
+  commenterId = "",
+  date = ""
 ) => {
   const params = new URLSearchParams();
 
@@ -20,6 +20,11 @@ export const getComments = async (
   } else if (name?.trim()) {
     // Keep old name filtering compatible
     params.append("name", name.trim());
+  }
+
+  // Date filter
+  if (date?.trim()) {
+    params.append("date", date.trim());
   }
 
   let endpoint;

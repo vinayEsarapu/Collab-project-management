@@ -80,7 +80,13 @@ function IssueDetails() {
       return;
     }
 
-    navigate(backToIssuesPath);
+    navigate(issueActivityPath, {
+  state: {
+    from: "issue-details",
+    issueDetailsPath: location.pathname,
+    parentState: location.state,
+  },
+});
   };
 
   /*
