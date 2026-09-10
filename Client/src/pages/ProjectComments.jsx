@@ -3,11 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
 import {
   getProjectComments,
-  getProjectById,
   createProjectComment,
   updateProjectComment,
   deleteProjectComment,
 } from "../services/projectservices";
+import DatePicker from "../components/DatePicker";
 
 function ProjectComments() {
   const { id: projectId } = useParams();
@@ -23,13 +23,10 @@ function ProjectComments() {
   // FILTERS
   // -----------------------------------------
 
-  const [commenterId, setCommenterId] = useState("");
-  const [commenterName, setCommenterName] = useState("");
+ 
   const [selectedDate, setSelectedDate] = useState("");
 
-  const [commenters, setCommenters] = useState([]);
-  const [commentersLoading, setCommentersLoading] =
-    useState(false);
+ 
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -128,52 +125,7 @@ function ProjectComments() {
   // FETCH COMMENTERS
   // -----------------------------------------
 
-  const fetchCommenters = async () => {
-    if (!projectId) {
-      return;
-    }
-
-    try {
-      setCommentersLoading(true);
-
-      const project =
-        await getProjectById(projectId);
-
-      const users = [];
-
-      if (project?.owner?._id) {
-        users.push(project.owner);
-      }
-
-      if (Array.isArray(project?.members)) {
-        users.push(...project.members);
-      }
-
-      const uniqueUsers = Array.from(
-        new Map(
-          users.map((member) => [
-            member._id.toString(),
-            member,
-          ])
-        ).values()
-      );
-
-      uniqueUsers.sort((a, b) =>
-        (a.name || "").localeCompare(
-          b.name || ""
-        )
-      );
-
-      setCommenters(uniqueUsers);
-    } catch (error) {
-      console.error(
-        "Failed to load project commenters:",
-        error
-      );
-    } finally {
-      setCommentersLoading(false);
-    }
-  };
+ 
 
   // -----------------------------------------
   // FETCH COMMENTS
@@ -188,7 +140,7 @@ function ProjectComments() {
         projectId,
         page,
         10,
-        commenterId,
+        "",
         selectedDate
       );
 
@@ -223,26 +175,21 @@ function ProjectComments() {
   // LOAD COMMENTERS
   // -----------------------------------------
 
-  useEffect(() => {
-    if (projectId) {
-      fetchCommenters();
-    }
-  }, [projectId]);
+ 
 
   // -----------------------------------------
   // LOAD COMMENTS
   // -----------------------------------------
 
-  useEffect(() => {
-    if (projectId) {
-      fetchComments();
-    }
-  }, [
-    projectId,
-    page,
-    commenterId,
-    selectedDate,
-  ]);
+ useEffect(() => {
+  if (projectId) {
+    fetchComments();
+  }
+}, [
+  projectId,
+  page,
+  selectedDate,
+]);
 
   // -----------------------------------------
   // ADD COMMENT
@@ -395,13 +342,7 @@ const handleDeleteComment = async () => {
   // CLEAR ALL FILTERS
   // -----------------------------------------
 
-  const handleClearAllFilters = () => {
-    setCommenterId("");
-    setCommenterName("");
-    setSelectedDate("");
-    setPage(1);
-  };
-
+  
   // -----------------------------------------
   // LOADING SCREEN
   // -----------------------------------------
@@ -464,128 +405,38 @@ const handleDeleteComment = async () => {
             FILTERS
         ----------------------------------- */}
 
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-          <div className="grid gap-4 sm:grid-cols-2">
+      
 
-            {/* Commenter Filter */}
-            <div>
-              <label
-                htmlFor="project-commenter-filter"
-                className="text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Filter by commenter
-              </label>
+  {/* -----------------------------------
+    DATE FILTER
+----------------------------------- */}
+<section className="relative z-[1000] mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+  <div className="max-w-sm">
 
-              <select
-                id="project-commenter-filter"
-                value={commenterId}
-                onChange={(event) => {
-                  const selectedId =
-                    event.target.value;
+    <label
+      htmlFor="project-comment-date-filter"
+      className="text-xs font-medium uppercase tracking-wide text-slate-500"
+    >
+      Filter by date
+    </label>
 
-                  setCommenterId(selectedId);
+    <div id="project-comment-date-filter" className="mt-2">
+      <DatePicker
+        value={selectedDate}
+        onChange={(date) => {
+          setSelectedDate(date);
+          setPage(1);
+        }}
+        onClear={() => {
+          setSelectedDate("");
+          setPage(1);
+        }}
+      />
+    </div>
 
-                  const selectedUser =
-                    commenters.find(
-                      (member) =>
-                        member._id?.toString() ===
-                        selectedId
-                    );
+  </div>
 
-                  setCommenterName(
-                    selectedUser?.name || ""
-                  );
-
-                  setPage(1);
-                }}
-                disabled={commentersLoading}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">
-                  {commentersLoading
-                    ? "Loading commenters..."
-                    : "All commenters"}
-                </option>
-
-                {commenters.map((member) => (
-                  <option
-                    key={member._id}
-                    value={member._id}
-                  >
-                    {member.name ||
-                      "Unknown User"}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date Filter */}
-            <div>
-              <label
-                htmlFor="project-comment-date-filter"
-                className="text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Filter by date
-              </label>
-
-              <input
-                id="project-comment-date-filter"
-                type="date"
-                value={selectedDate}
-                onChange={(event) => {
-                  setSelectedDate(
-                    event.target.value
-                  );
-                  setPage(1);
-                }}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-              />
-            </div>
-          </div>
-
-          {/* Filter Actions */}
-          {(commenterId || selectedDate) && (
-            <div className="mt-4 flex flex-wrap gap-2">
-
-              {commenterId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommenterId("");
-                    setCommenterName("");
-                    setPage(1);
-                  }}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-                >
-                  Clear commenter
-                </button>
-              )}
-
-              {selectedDate && (
-                <button
-                  type="button"
-                  onClick={handleClearDate}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-                >
-                  Clear date
-                </button>
-              )}
-
-              {commenterId &&
-                selectedDate && (
-                  <button
-                    type="button"
-                    onClick={
-                      handleClearAllFilters
-                    }
-                    className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
-                  >
-                    Clear all filters
-                  </button>
-                )}
-            </div>
-          )}
-        </section>
+</section>
 
         {/* Error */}
         {error && (
@@ -603,15 +454,7 @@ const handleDeleteComment = async () => {
                 ? "comment"
                 : "comments"}
 
-              {commenterName && (
-                <>
-                  {" "}
-                  by{" "}
-                  <span className="text-slate-300">
-                    {commenterName}
-                  </span>
-                </>
-              )}
+            
 
               {selectedDate && (
                 <>

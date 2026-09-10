@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+
 const ProjectComment = require("../models/ProjectComment");
 const ProjectActivity = require("../models/ProjectActivity");
 
@@ -27,9 +27,7 @@ const getProjectComments = async (req, res) => {
       50
     );
 
-    const commenterId =
-      (req.query.commenterId || "").trim();
-
+   
     const date =
       (req.query.date || "").trim();
 
@@ -41,17 +39,7 @@ const getProjectComments = async (req, res) => {
     // COMMENTER FILTER
     // -----------------------------------------
 
-    if (commenterId) {
-      if (
-        !mongoose.Types.ObjectId.isValid(commenterId)
-      ) {
-        return res.status(400).json({
-          message: "Invalid commenter ID",
-        });
-      }
-
-      filter.createdBy = commenterId;
-    }
+   
 
     // -----------------------------------------
     // DATE FILTER

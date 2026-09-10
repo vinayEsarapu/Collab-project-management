@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import DatePicker from "../components/DatePicker";
 import { getProjectActivity, getProjectById ,  deleteProjectActivity} from "../services/projectservices";
 
 function ProjectActivity() {
@@ -90,21 +91,8 @@ function ProjectActivity() {
     loadActivity(1, "");
   }, [id]);
 
-  const handleDateChange = (event) => {
-    const value = event.target.value;
-
-    setActivityDate(value);
-    setActivityPage(1);
-
-    loadActivity(1, value);
-  };
-
-  const handleClearFilter = () => {
-    setActivityDate("");
-    setActivityPage(1);
-
-    loadActivity(1, "");
-  };
+  
+  
 
  const [showDeleteConfirm, setShowDeleteConfirm] =
   useState(false);
@@ -263,36 +251,36 @@ const handleDeleteActivity = async () => {
         </section>
 
         {/* Filter */}
-        <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex-1">
-              <label
-                htmlFor="activityDate"
-                className="text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Filter by date
-              </label>
+       {/* Filter */}
+<section className="relative z-[1000] mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+  <div className="max-w-sm">
 
-              <input
-                id="activityDate"
-                type="date"
-                value={activityDate}
-                onChange={handleDateChange}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
-              />
-            </div>
+    <label
+      className="text-xs font-medium uppercase tracking-wide text-slate-500"
+    >
+      Filter by date
+    </label>
 
-            {activityDate && (
-              <button
-                type="button"
-                onClick={handleClearFilter}
-                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-              >
-                Clear Filter
-              </button>
-            )}
-          </div>
-        </section>
+    <div className="mt-2">
+      <DatePicker
+        value={activityDate}
+        onChange={(date) => {
+          setActivityDate(date);
+          setActivityPage(1);
+
+          loadActivity(1, date);
+        }}
+        onClear={() => {
+          setActivityDate("");
+          setActivityPage(1);
+
+          loadActivity(1, "");
+        }}
+      />
+    </div>
+
+  </div>
+</section>
 
         {/* Error */}
         {activityError && (

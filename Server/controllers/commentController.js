@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Comment = require("../models/comment");
 const Issue = require("../models/issues");
-const User = require("../models/user");
+
 
 const { createActivity } = require("../services/activityService");
 
@@ -64,12 +64,7 @@ const getComments = async (req, res) => {
     /*
      * Filters.
      */
-    const name =
-      (req.query.name || "").trim();
-
-    const commenterId =
-      (req.query.commenterId || "").trim();
-
+    
     const date =
       (req.query.date || "").trim();
 
@@ -120,64 +115,9 @@ const getComments = async (req, res) => {
       };
     }
 
-    /*
-     * ----------------------------------------------
-     * COMMENTER FILTER
-     * ----------------------------------------------
-     *
-     * Dropdown filtering uses commenterId.
-     * Name filtering remains as a fallback.
-     */
+    
 
-    if (commenterId) {
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          commenterId
-        )
-      ) {
-        return res.status(400).json({
-          message: "Invalid commenter ID",
-        });
-      }
-
-      filter.createdBy = commenterId;
-    } else if (name) {
-      const matchingUsers =
-        await User.find({
-          name: {
-            $regex: name,
-            $options: "i",
-          },
-        }).select("_id");
-
-      const userIds =
-        matchingUsers.map(
-          (user) => user._id
-        );
-
-      /*
-       * No users matched the name.
-       */
-      if (userIds.length === 0) {
-        return res.status(200).json({
-          count: 0,
-          comments: [],
-          pagination: {
-            currentPage: 1,
-            totalPages: 0,
-            totalComments: 0,
-            limit,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          },
-        });
-      }
-
-      filter.createdBy = {
-        $in: userIds,
-      };
-    }
-
+      
     /*
      * ----------------------------------------------
      * TOTAL COMMENTS

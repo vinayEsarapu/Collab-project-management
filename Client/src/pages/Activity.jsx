@@ -7,6 +7,7 @@ import {
 } from "../services/activityService";
 import { useAuth } from "../context/Authcontext";
 import { getProjectById } from "../services/projectservices";
+import DatePicker from "../components/DatePicker";
 
 function Activity() {
   const { id: projectId, taskId, issueId } = useParams();
@@ -157,10 +158,7 @@ function Activity() {
   /*
    * Date filter
    */
-  const handleDateChange = (event) => {
-    setSelectedDate(event.target.value);
-    setPage(1);
-  };
+ 
 
   const clearDateFilter = () => {
     setSelectedDate("");
@@ -440,33 +438,32 @@ function Activity() {
         </div>
 
         {/* Date filter */}
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+       {/* Date filter */}
+       <div className="relative z-[1000] mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
 
-            <div className="flex-1">
-              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Filter by date
-              </label>
+    <div className="flex-1">
+      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        Filter by date
+      </label>
 
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={handleDateChange}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
-              />
-            </div>
+      <div className="mt-2 max-w-sm">
+        <DatePicker
+          value={selectedDate}
+          onChange={(date) => {
+            setSelectedDate(date);
+            setPage(1);
+          }}
+          onClear={() => {
+            setSelectedDate("");
+            setPage(1);
+          }}
+        />
+      </div>
+    </div>
 
-            {selectedDate && (
-              <button
-                type="button"
-                onClick={clearDateFilter}
-                className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-              >
-                Clear Filter
-              </button>
-            )}
-          </div>
-        </div>
+  </div>
+</div>
 
         {/* Error */}
         {error && (

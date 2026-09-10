@@ -4,23 +4,13 @@ export const getComments = async (
   issueId,
   page = 1,
   limit = 10,
-  name = "",
   taskId = null,
-  commenterId = "",
   date = ""
 ) => {
   const params = new URLSearchParams();
 
   params.append("page", page);
   params.append("limit", limit);
-
-  // Prefer user ID because names may not be unique
-  if (commenterId?.trim()) {
-    params.append("commenterId", commenterId.trim());
-  } else if (name?.trim()) {
-    // Keep old name filtering compatible
-    params.append("name", name.trim());
-  }
 
   // Date filter
   if (date?.trim()) {

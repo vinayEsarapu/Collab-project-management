@@ -11,7 +11,8 @@ import {
   updateComment,
   deleteComment,
 } from "../services/commentService";
-import { getProjectById } from "../services/projectservices";
+import DatePicker from "../components/DatePicker";
+//import { getProjectById } from "../services/projectservices";
 
 function Comments() {
   const {
@@ -32,11 +33,7 @@ function Comments() {
   // Commenter filter
   // --------------------------------------------------
 
-  const [name, setName] = useState("");
-  const [commenterId, setCommenterId] = useState("");
-  const [commenters, setCommenters] = useState([]);
-  const [commentersLoading, setCommentersLoading] =
-    useState(false);
+
 
   // --------------------------------------------------
   // Date filter
@@ -202,55 +199,7 @@ function Comments() {
   // Fetch commenters
   // --------------------------------------------------
 
-  const fetchCommenters = async () => {
-    if (!projectId) {
-      return;
-    }
-
-    try {
-      setCommentersLoading(true);
-
-      const project = await getProjectById(projectId);
-
-      const users = [];
-
-      // Project owner
-      if (project?.owner?._id) {
-        users.push(project.owner);
-      }
-
-      // Project members
-      if (Array.isArray(project?.members)) {
-        users.push(...project.members);
-      }
-
-      // Remove duplicates
-      const uniqueUsers = Array.from(
-        new Map(
-          users.map((member) => [
-            member._id.toString(),
-            member,
-          ])
-        ).values()
-      );
-
-      // Sort alphabetically
-      uniqueUsers.sort((a, b) =>
-        (a.name || "").localeCompare(
-          b.name || ""
-        )
-      );
-
-      setCommenters(uniqueUsers);
-    } catch (error) {
-      console.error(
-        "Failed to load project commenters:",
-        error
-      );
-    } finally {
-      setCommentersLoading(false);
-    }
-  };
+  
 
   // --------------------------------------------------
   // Fetch comments
@@ -265,9 +214,7 @@ function Comments() {
         issueId,
         page,
         10,
-        name,
         taskId,
-        commenterId,
         selectedDate
       );
 
@@ -297,11 +244,7 @@ function Comments() {
   // Effects
   // --------------------------------------------------
 
-  useEffect(() => {
-    if (projectId) {
-      fetchCommenters();
-    }
-  }, [projectId]);
+ 
 
   useEffect(() => {
     if (taskId || issueId) {
@@ -311,8 +254,6 @@ function Comments() {
     taskId,
     issueId,
     page,
-    name,
-    commenterId,
     selectedDate,
   ]);
 
@@ -320,10 +261,10 @@ function Comments() {
   // Date filter
   // --------------------------------------------------
 
-  const handleDateChange = (event) => {
-    setSelectedDate(event.target.value);
-    setPage(1);
-  };
+ const handleDateChange = (date) => {
+  setSelectedDate(date);
+  setPage(1);
+};
 
   const clearDateFilter = () => {
     setSelectedDate("");
@@ -334,26 +275,6 @@ function Comments() {
   // Commenter filter
   // --------------------------------------------------
 
-  const handleCommenterChange = (event) => {
-    const selectedId = event.target.value;
-
-    setCommenterId(selectedId);
-
-    const selectedUser = commenters.find(
-      (member) =>
-        member._id?.toString() === selectedId
-    );
-
-    setName(selectedUser?.name || "");
-
-    setPage(1);
-  };
-
-  const clearCommenterFilter = () => {
-    setCommenterId("");
-    setName("");
-    setPage(1);
-  };
 
   // --------------------------------------------------
   // Add comment
@@ -516,113 +437,40 @@ function Comments() {
           </p>
         </div>
 
-        {/* =================================================
-            FILTERS
-            ================================================= */}
+       
 
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
+  {/* Calendar date filter */}
 
-          <div className="grid gap-4 md:grid-cols-2">
+  {/* =================================================
+    DATE FILTER
+    ================================================= */}
 
-            {/* Commenter filter */}
+<section className="relative z-[1000] mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
 
-            <div>
-              <label
-                htmlFor="commenter-filter"
-                className="text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Filter by commenter
-              </label>
+  <div className="max-w-sm">
 
-              <select
-                id="commenter-filter"
-                value={commenterId}
-                onChange={handleCommenterChange}
-                disabled={commentersLoading}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">
-                  {commentersLoading
-                    ? "Loading commenters..."
-                    : "All commenters"}
-                </option>
+    <label
+      htmlFor="comment-date-filter"
+      className="text-xs font-medium uppercase tracking-wide text-slate-500"
+    >
+      Filter by date
+    </label>
 
-                {commenters.map((member) => (
-                  <option
-                    key={member._id}
-                    value={member._id}
-                  >
-                    {member.name ||
-                      "Unknown User"}
-                  </option>
-                ))}
-              </select>
-            </div>
+    <div id="comment-date-filter" className="mt-2">
+      <DatePicker
+        value={selectedDate}
+        onChange={handleDateChange}
+        onClear={clearDateFilter}
+      />
+    </div>
 
-            {/* Calendar date filter */}
+  </div>
 
-            <div>
-              <label
-                htmlFor="comment-date-filter"
-                className="text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Filter by date
-              </label>
+</section>
 
-              <input
-                id="comment-date-filter"
-                type="date"
-                value={selectedDate}
-                onChange={handleDateChange}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-              />
-            </div>
+  {/* Clear date filter */}
 
-          </div>
-
-          {/* Clear filters */}
-
-          {(commenterId || selectedDate) && (
-            <div className="mt-4 flex flex-wrap gap-2">
-
-              {commenterId && (
-                <button
-                  type="button"
-                  onClick={clearCommenterFilter}
-                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-                >
-                  Clear commenter
-                </button>
-              )}
-
-              {selectedDate && (
-                <button
-                  type="button"
-                  onClick={clearDateFilter}
-                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-                >
-                  Clear date
-                </button>
-              )}
-
-              {commenterId && selectedDate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCommenterId("");
-                    setName("");
-                    setSelectedDate("");
-                    setPage(1);
-                  }}
-                  className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-2.5 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20"
-                >
-                  Clear all filters
-                </button>
-              )}
-
-            </div>
-          )}
-        </section>
+ 
 
         {/* Error */}
 
@@ -646,11 +494,6 @@ function Comments() {
 
             <div className="flex flex-col gap-1 sm:items-end">
 
-              {commenterId && name && (
-                <p className="text-xs text-indigo-400">
-                  Showing comments by "{name}"
-                </p>
-              )}
 
               {selectedDate && (
                 <p className="text-xs text-indigo-400">
@@ -675,25 +518,18 @@ function Comments() {
               </h3>
 
               <p className="mt-2 text-sm text-slate-500">
-                {selectedDate
-                  ? `No comments found on ${selectedDate}.`
-                  : commenterId && name
-                  ? `No comments found by "${name}".`
-                  : "No comments have been added yet."}
+               {selectedDate
+  ? `No comments found on ${selectedDate}.`
+  : "No comments have been added yet."}
               </p>
 
-              {(commenterId || selectedDate) && (
+              {selectedDate && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setCommenterId("");
-                    setName("");
-                    setSelectedDate("");
-                    setPage(1);
-                  }}
+                 onClick={clearDateFilter}
                   className="mt-5 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
                 >
-                  Clear Filters
+                  Clear Date
                 </button>
               )}
 
