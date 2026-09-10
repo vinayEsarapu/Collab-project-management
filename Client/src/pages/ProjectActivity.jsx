@@ -106,42 +106,56 @@ function ProjectActivity() {
     loadActivity(1, "");
   };
 
-  const handleDeleteActivity = async (activityId) => {
-  const confirmed = window.confirm(
-    "Delete this activity log? This action cannot be undone."
-  );
+ const [showDeleteConfirm, setShowDeleteConfirm] =
+  useState(false);
 
-  if (!confirmed) {
-    return;
-  }
+const [selectedActivityId, setSelectedActivityId] =
+  useState(null);
+  const openDeleteConfirmation = (activityId) => {
+  setSelectedActivityId(activityId);
+  setShowDeleteConfirm(true);
+};
+
+const closeDeleteConfirmation = () => {
+  if (deletingActivityId) return;
+
+  setShowDeleteConfirm(false);
+  setSelectedActivityId(null);
+};
+const handleDeleteActivity = async () => {
+  if (!selectedActivityId) return;
 
   try {
-    setDeletingActivityId(activityId);
+    setDeletingActivityId(selectedActivityId);
     setActivityError("");
 
-    await deleteProjectActivity(id, activityId);
+    await deleteProjectActivity(
+      id,
+      selectedActivityId
+    );
 
     setActivities((currentActivities) =>
       currentActivities.filter(
-        (activity) => activity._id !== activityId
+        (activity) =>
+          activity._id !== selectedActivityId
       )
     );
 
     setActivityPagination((current) => ({
       ...current,
       total: Math.max(current.total - 1, 0),
-      totalPages:
-        Math.max(
-          Math.ceil(Math.max(current.total - 1, 0) / current.limit),
-          0
+      totalPages: Math.max(
+        Math.ceil(
+          Math.max(current.total - 1, 0) /
+            current.limit
         ),
+        0
+      ),
     }));
-  } catch (error) {
-    console.error(
-      "Failed to delete activity:",
-      error
-    );
 
+    setShowDeleteConfirm(false);
+    setSelectedActivityId(null);
+  } catch (error) {
     setActivityError(
       error.response?.data?.message ||
         "Failed to delete activity log."
@@ -150,7 +164,6 @@ function ProjectActivity() {
     setDeletingActivityId(null);
   }
 };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -318,7 +331,7 @@ function ProjectActivity() {
   <ActivityCard
     key={activity._id}
     activity={activity}
-    onDelete={handleDeleteActivity}
+    onDelete={openDeleteConfirmation}
     isDeleting={
       deletingActivityId === activity._id
     }
@@ -384,6 +397,43 @@ function ProjectActivity() {
           )}
         </section>
       </main>
+      {showDeleteConfirm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+
+      <h2 className="text-lg font-semibold text-white">
+        Delete Activity Log?
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-slate-400">
+        Are you sure you want to delete this
+        activity log? This action cannot be undone.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={closeDeleteConfirmation}
+          disabled={Boolean(deletingActivityId)}
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDeleteActivity}
+          disabled={Boolean(deletingActivityId)}
+          className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deletingActivityId
+            ? "Deleting..."
+            : "Delete Activity"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

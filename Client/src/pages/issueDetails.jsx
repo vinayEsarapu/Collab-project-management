@@ -74,20 +74,16 @@ function IssueDetails() {
    * --------------------------------------------------
    */
 
-  const handleBack = () => {
-    if (location.state?.from === "profile") {
-      navigate("/profile");
-      return;
-    }
+ const handleBack = () => {
+  if (location.state?.from === "profile") {
+    navigate("/profile");
+    return;
+  }
 
-    navigate(issueActivityPath, {
-  state: {
-    from: "issue-details",
-    issueDetailsPath: location.pathname,
-    parentState: location.state,
-  },
-});
-  };
+  navigate(backToIssuesPath, {
+    state: location.state,
+  });
+};
 
   /*
    * --------------------------------------------------
@@ -677,12 +673,17 @@ function IssueDetails() {
 </Link>
 
           {/* View Activity */}
-          <Link
-            to={issueActivityPath}
-            className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-          >
-            View Activity
-          </Link>
+         <Link
+  to={issueActivityPath}
+  state={{
+    from: "issue-details",
+    issueDetailsPath: location.pathname,
+    parentState: location.state,
+  }}
+  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+>
+  View Activity
+</Link>
 
           {/* Delete */}
           {isOwner && (

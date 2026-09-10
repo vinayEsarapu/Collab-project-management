@@ -265,18 +265,45 @@ function Activity() {
    *
    * We receive issueDetailsPath from issueDetails.jsx.
    */
-  const getBackPath = () => {
-    if (location.state?.from === "issue-details") {
-      return location.state.issueDetailsPath;
-    }
+ const getBackPath = () => {
+  /*
+   * Task Issue Details -> Task Issue Activity
+   * Activity -> exact Task Issue Details
+   */
+  if (location.state?.from === "issue-details") {
+    return location.state.issueDetailsPath;
+  }
 
-    if (taskId) {
-      return `/projects/${projectId}/tasks/${taskId}`;
-    }
+  /*
+   * Task-level Issue Activity
+   *
+   * Example:
+   * /projects/:projectId/tasks/:taskId/issues/:issueId/activity
+   *
+   * must return to:
+   * /projects/:projectId/tasks/:taskId/issues/:issueId
+   */
+  if (taskId && issueId) {
+    return `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`;
+  }
 
-    return `/projects/${projectId}/issues/${issueId}`;
-  };
+  /*
+   * Normal Task Activity
+   *
+   * Example:
+   * /projects/:projectId/tasks/:taskId/activity
+   *
+   * returns to Task Details.
+   */
+  if (taskId) {
+    return `/projects/${projectId}/tasks/${taskId}`;
+  }
 
+  /*
+   * Project-level Issue Activity
+   */
+  return `/projects/${projectId}/issues/${issueId}`;
+};
   /*
    * Preserve the original navigation state.
    *

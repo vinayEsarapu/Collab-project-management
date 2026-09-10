@@ -337,42 +337,50 @@ function ProjectComments() {
   // -----------------------------------------
   // DELETE COMMENT
   // -----------------------------------------
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+  useState(false);
 
-  const handleDeleteComment = async (
-    commentId
-  ) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this comment?"
+const [selectedCommentId, setSelectedCommentId] =
+  useState(null);
+  const openDeleteConfirmation = (commentId) => {
+  setSelectedCommentId(commentId);
+  setShowDeleteConfirm(true);
+};
+
+const closeDeleteConfirmation = () => {
+  if (commentDeletingId) return;
+
+  setShowDeleteConfirm(false);
+  setSelectedCommentId(null);
+};
+
+const handleDeleteComment = async () => {
+  if (!selectedCommentId) return;
+
+  try {
+    setCommentDeletingId(selectedCommentId);
+    setError("");
+
+    await deleteProjectComment(
+      projectId,
+      selectedCommentId
     );
 
-    if (!confirmed) {
-      return;
-    }
+    setShowDeleteConfirm(false);
+    setSelectedCommentId(null);
 
-    try {
-      setCommentDeletingId(commentId);
-      setError("");
+    await fetchComments();
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Failed to delete comment."
+    );
+  } finally {
+    setCommentDeletingId(null);
+  }
+};
 
-      await deleteProjectComment(
-        projectId,
-        commentId
-      );
-
-      await fetchComments();
-    } catch (error) {
-      console.error(
-        "Failed to delete project comment:",
-        error
-      );
-
-      setError(
-        error.response?.data?.message ||
-          "Failed to delete comment."
-      );
-    } finally {
-      setCommentDeletingId(null);
-    }
-  };
+ 
 
   // -----------------------------------------
   // CLEAR DATE FILTER
@@ -762,11 +770,9 @@ function ProjectComments() {
 
                               <button
                                 type="button"
-                                onClick={() =>
-                                  handleDeleteComment(
-                                    comment._id
-                                  )
-                                }
+                               onClick={() =>
+  openDeleteConfirmation(comment._id)
+}
                                 disabled={
                                   commentDeletingId ===
                                   comment._id
@@ -877,8 +883,47 @@ function ProjectComments() {
           </form>
         </section>
       </div>
+
+      {showDeleteConfirm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+
+      <h2 className="text-lg font-semibold text-white">
+        Delete Comment?
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-slate-400">
+        Are you sure you want to delete this
+        comment? This action cannot be undone.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={closeDeleteConfirmation}
+          disabled={Boolean(commentDeletingId)}
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDeleteComment}
+          disabled={Boolean(commentDeletingId)}
+          className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {commentDeletingId
+            ? "Deleting..."
+            : "Delete Comment"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
+
 
 export default ProjectComments;
