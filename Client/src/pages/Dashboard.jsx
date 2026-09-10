@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
 
 import {
-  getIssues,
   getIssuesByProject,
+  getIssuesByTask,
 } from "../services/issueservices";
 
-import { getProjects } from "../services/projectservices";
+import {
+  getProjects,
+  getProjectTasks,
+} from "../services/projectservices";
 
 function Dashboard() {
   const { user } = useAuth();
@@ -19,14 +22,15 @@ function Dashboard() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState("");
 
-  const [issues, setIssues] = useState([]);
-  const [issuesLoading, setIssuesLoading] = useState(true);
-  const [issuesError, setIssuesError] = useState("");
+  const [projectData, setProjectData] = useState([]);
+  const [workLoading, setWorkLoading] = useState(true);
+  const [workError, setWorkError] = useState("");
 
-  // -----------------------------------------
-  // Load projects
-  // -----------------------------------------
-
+  /*
+   * Dashboard project scope:
+   * getProjects() returns projects where the logged-in
+   * user is an owner/member.
+   */
   useEffect(() => {
     const loadProjects = async () => {
       try {
@@ -43,6 +47,8 @@ function Dashboard() {
           error.response?.data?.message ||
             "Unable to load project statistics."
         );
+
+        setProjects([]);
       } finally {
         setProjectsLoading(false);
       }
@@ -51,94 +57,215 @@ function Dashboard() {
     loadProjects();
   }, []);
 
-  // -----------------------------------------
-  // Load issues
-  // -----------------------------------------
-
+  /*
+   * Load all tasks and all issues belonging to the projects.
+   *
+   * IMPORTANT:
+   * Dashboard is based on project involvement, NOT
+   * task/issue assignment.
+   *
+   * Therefore even if the user is not assigned to a
+   * task or issue, it is still included.
+   */
   useEffect(() => {
-    const loadIssues = async () => {
+    const loadDashboardWork = async () => {
+      if (!projects.length) {
+        setProjectData([]);
+        setWorkLoading(false);
+        return;
+      }
+
       try {
-        setIssuesLoading(true);
-        setIssuesError("");
+        setWorkLoading(true);
+        setWorkError("");
 
-        const data =
-          selectedProject === "all"
-            ? await getIssues()
-            : await getIssuesByProject(selectedProject);
+        const data = await Promise.all(
+          projects.map(async (project) => {
+            const [
+              tasksResponse,
+              projectIssuesResponse,
+            ] = await Promise.all([
+              getProjectTasks(project._id),
+              getIssuesByProject(project._id),
+            ]);
 
-        setIssues(data?.issues || []);
-      } catch (error) {
-        console.error("Failed to load issues:", error);
+            const tasks = Array.isArray(tasksResponse)
+              ? tasksResponse
+              : tasksResponse?.tasks || [];
 
-        setIssuesError(
-          error.response?.data?.message ||
-            "Unable to load issue statistics."
+            /*
+             * Get issues belonging to every task.
+             */
+            const taskIssueResults = await Promise.all(
+              tasks.map(async (task) => {
+                try {
+                  const response = await getIssuesByTask(task._id);
+
+                  return response?.issues || [];
+                } catch (error) {
+                  console.error(
+                    `Failed to load issues for task ${task._id}:`,
+                    error
+                  );
+
+                  return [];
+                }
+              })
+            );
+
+            return {
+              project,
+              tasks,
+              projectIssues:
+                projectIssuesResponse?.issues || [],
+              taskIssues: taskIssueResults.flat(),
+            };
+          })
         );
 
-        setIssues([]);
+        setProjectData(data);
+      } catch (error) {
+        console.error(
+          "Failed to load dashboard work:",
+          error
+        );
+
+        setWorkError(
+          error.response?.data?.message ||
+            "Unable to load task and issue statistics."
+        );
+
+        setProjectData([]);
       } finally {
-        setIssuesLoading(false);
+        setWorkLoading(false);
       }
     };
 
-    loadIssues();
-  }, [selectedProject]);
+    loadDashboardWork();
+  }, [projects]);
 
-  // -----------------------------------------
-  // Project statistics
-  // -----------------------------------------
+  /*
+   * Apply project filter to Task Overview and Issue Overview.
+   */
+  const visibleProjectData = useMemo(() => {
+    if (selectedProject === "all") {
+      return projectData;
+    }
 
+    return projectData.filter(
+      ({ project }) =>
+        project._id === selectedProject
+    );
+  }, [projectData, selectedProject]);
+
+  /*
+   * PROJECT STATISTICS
+   *
+   * Project Overview always represents all projects
+   * the user owns/is a member of.
+   */
   const projectStats = useMemo(
     () => ({
       total: projects.length,
 
       planning: projects.filter(
-        (project) => project.status === "Planning"
+        (project) =>
+          project.status === "Planning"
       ).length,
 
       inProgress: projects.filter(
-        (project) => project.status === "In Progress"
+        (project) =>
+          project.status === "In Progress"
       ).length,
 
       completed: projects.filter(
-        (project) => project.status === "Completed"
+        (project) =>
+          project.status === "Completed"
       ).length,
     }),
     [projects]
   );
 
-  // -----------------------------------------
-  // Issue statistics
-  // -----------------------------------------
+  /*
+   * TASK STATISTICS
+   */
+  const taskStats = useMemo(() => {
+    const tasks = visibleProjectData.flatMap(
+      ({ tasks }) => tasks
+    );
 
-  const issueStats = useMemo(
-    () => ({
+    return {
+      total: tasks.length,
+
+      planning: tasks.filter(
+        (task) =>
+          task.status === "Planning"
+      ).length,
+
+      inProgress: tasks.filter(
+        (task) =>
+          task.status === "In Progress"
+      ).length,
+
+      completed: tasks.filter(
+        (task) =>
+          task.status === "Completed"
+      ).length,
+    };
+  }, [visibleProjectData]);
+
+  /*
+   * ISSUE STATISTICS
+   *
+   * Includes:
+   *
+   * 1. Project-level issues
+   * 2. Task-level issues
+   *
+   * This fixes the old Dashboard behaviour where
+   * getIssues() only returned task:null issues.
+   */
+  const issueStats = useMemo(() => {
+    const issues = visibleProjectData.flatMap(
+      ({
+        projectIssues,
+        taskIssues,
+      }) => [
+        ...projectIssues,
+        ...taskIssues,
+      ]
+    );
+
+    return {
       total: issues.length,
 
       open: issues.filter(
-        (issue) => issue.status === "Open"
+        (issue) =>
+          issue.status === "Open"
       ).length,
 
       inProgress: issues.filter(
-        (issue) => issue.status === "In Progress"
+        (issue) =>
+          issue.status === "In Progress"
       ).length,
 
       closed: issues.filter(
-        (issue) => issue.status === "Closed"
+        (issue) =>
+          issue.status === "Closed"
       ).length,
-    }),
-    [issues]
-  );
+    };
+  }, [visibleProjectData]);
 
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName =
+    user?.name?.split(" ")[0] || "there";
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
-        {/* =====================================
-            Welcome Section
-        ===================================== */}
+        {/* =========================
+            WELCOME
+        ========================== */}
 
         <section className="mb-10">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -153,25 +280,30 @@ function Dashboard() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                Keep track of your projects and issues from one place.
+                Keep track of your projects, tasks,
+                and issues from one place.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => navigate("/projects/new")}
+              onClick={() =>
+                navigate("/projects/new")
+              }
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/10 transition-colors duration-200 hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
             >
-              <span className="text-lg leading-none">+</span>
+              <span className="text-lg leading-none">
+                +
+              </span>
+
               New Project
             </button>
-
           </div>
         </section>
 
-        {/* =====================================
-            Project Overview
-        ===================================== */}
+        {/* =========================
+            PROJECT OVERVIEW
+        ========================== */}
 
         <section className="mb-10">
 
@@ -181,7 +313,8 @@ function Dashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              A summary of your current projects.
+              A summary of projects you own or are
+              a member of.
             </p>
           </div>
 
@@ -236,80 +369,160 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* =====================================
-            Issue Overview
-        ===================================== */}
+        {/* =========================
+            PROJECT FILTER
+        ========================== */}
+
+        <section className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+          <div>
+            <h2 className="text-lg font-semibold">
+              Project Work Filter
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Filter task and issue statistics
+              by project.
+            </p>
+          </div>
+
+          <div className="w-full sm:w-60">
+
+            <label
+              htmlFor="project-filter"
+              className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500"
+            >
+              Project
+            </label>
+
+            <select
+              id="project-filter"
+              value={selectedProject}
+              onChange={(event) =>
+                setSelectedProject(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-200 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+            >
+              <option value="all">
+                All Projects
+              </option>
+
+              {projects.map((project) => (
+                <option
+                  key={project._id}
+                  value={project._id}
+                >
+                  {project.title}
+                </option>
+              ))}
+            </select>
+
+          </div>
+        </section>
+
+        {workError && (
+          <div className="mb-10 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {workError}
+          </div>
+        )}
+
+        {/* =========================
+            TASK OVERVIEW
+        ========================== */}
+
+        <section className="mb-10">
+
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">
+              Task Overview
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Tasks across the selected project
+              scope.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+            <StatCard
+              label="Total Tasks"
+              value={
+                workLoading
+                  ? "—"
+                  : taskStats.total
+              }
+              description="All tasks"
+            />
+
+            <StatCard
+              label="Planning"
+              value={
+                workLoading
+                  ? "—"
+                  : taskStats.planning
+              }
+              description="Tasks being planned"
+            />
+
+            <StatCard
+              label="In Progress"
+              value={
+                workLoading
+                  ? "—"
+                  : taskStats.inProgress
+              }
+              description="Currently active"
+            />
+
+            <StatCard
+              label="Completed"
+              value={
+                workLoading
+                  ? "—"
+                  : taskStats.completed
+              }
+              description="Finished tasks"
+            />
+
+          </div>
+        </section>
+
+        {/* =========================
+            ISSUE OVERVIEW
+        ========================== */}
 
         <section>
 
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold">
+              Issue Overview
+            </h2>
 
-            <div>
-              <h2 className="text-lg font-semibold">
-                Issue Overview
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Track issue progress across your projects.
-              </p>
-            </div>
-
-            <div className="w-full sm:w-60">
-
-              <label
-                htmlFor="project-filter"
-                className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500"
-              >
-                Project
-              </label>
-
-              <select
-                id="project-filter"
-                value={selectedProject}
-                onChange={(event) =>
-                  setSelectedProject(event.target.value)
-                }
-                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition-colors duration-200 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
-              >
-                <option value="all">
-                  All Projects
-                </option>
-
-                {projects.map((project) => (
-                  <option
-                    key={project._id}
-                    value={project._id}
-                  >
-                    {project.title}
-                  </option>
-                ))}
-              </select>
-
-            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Includes project-level issues and
+              issues belonging to project tasks.
+            </p>
           </div>
-
-          {issuesError && (
-            <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-              {issuesError}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
             <StatCard
               label="Total Issues"
               value={
-                issuesLoading
+                workLoading
                   ? "—"
                   : issueStats.total
               }
-              description="All issues"
+              description="Project + task issues"
             />
 
             <StatCard
               label="Open"
               value={
-                issuesLoading
+                workLoading
                   ? "—"
                   : issueStats.open
               }
@@ -319,7 +532,7 @@ function Dashboard() {
             <StatCard
               label="In Progress"
               value={
-                issuesLoading
+                workLoading
                   ? "—"
                   : issueStats.inProgress
               }
@@ -329,7 +542,7 @@ function Dashboard() {
             <StatCard
               label="Closed"
               value={
-                issuesLoading
+                workLoading
                   ? "—"
                   : issueStats.closed
               }
@@ -344,11 +557,6 @@ function Dashboard() {
   );
 }
 
-
-/* =========================================
-   Statistics Card
-========================================= */
-
 function StatCard({
   label,
   value,
@@ -357,22 +565,18 @@ function StatCard({
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors duration-200 hover:border-white/15 hover:bg-white/[0.05]">
 
-      <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium text-slate-400">
+          {label}
+        </p>
 
-        <div>
-          <p className="text-sm font-medium text-slate-400">
-            {label}
-          </p>
+        <p className="mt-3 text-3xl font-bold tracking-tight text-white">
+          {value}
+        </p>
 
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-            {value}
-          </p>
-
-          <p className="mt-1 text-xs text-slate-500">
-            {description}
-          </p>
-        </div>
-
+        <p className="mt-1 text-xs text-slate-500">
+          {description}
+        </p>
       </div>
 
     </div>

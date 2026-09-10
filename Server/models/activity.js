@@ -51,6 +51,7 @@ const activitySchema = new mongoose.Schema(
         "TASK_UNASSIGNED",
         "TASK_STATUS_CHANGED",
         "TASK_PRIORITY_CHANGED",
+         "TASK_ISSUES_REASSIGNED",
       ],
     },
 

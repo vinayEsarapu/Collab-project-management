@@ -1,6 +1,10 @@
+
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/Authcontext";
 
 function Home() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Public Navbar */}
@@ -18,7 +22,7 @@ function Home() {
           {/* Navigation */}
           <nav className="flex items-center gap-2 sm:gap-3">
             <NavLink
-              to="/login"
+              to={isAuthenticated ? "/dashboard" : "/login"}
               className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors duration-200 hover:bg-white/5 hover:text-white sm:px-4"
             >
               Sign In
@@ -69,7 +73,7 @@ function Home() {
               </NavLink>
 
               <NavLink
-                to="/login"
+                to={isAuthenticated ? "/dashboard" : "/login"}
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 sm:w-auto"
               >
                 Sign In

@@ -8,14 +8,16 @@ import {
   ListTodo,
   CircleAlert,
   Forward,
-  CheckCircle2,
-  Clock3,
   ChevronRight,
   Filter,
   RefreshCw,
 } from "lucide-react";
 
 import { getMyProfile } from "../services/profileService.js";
+
+/* =========================================
+   HELPERS
+========================================= */
 
 const getStatusClasses = (status) => {
   switch (status) {
@@ -55,26 +57,81 @@ const getPriorityClasses = (priority) => {
   }
 };
 
-const formatDate = (date) => {
-  if (!date) return "";
-
-  return new Date(date).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
+/* =========================================
+   PROFILE
+========================================= */
 
 const Profile = () => {
   const navigate = useNavigate();
+
+  /* =======================================
+     MAIN PROFILE STATE
+  ======================================= */
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const [taskProjectFilter, setTaskProjectFilter] =
-    useState("All");
+  /* =======================================
+   MY TASKS
+======================================= */
+
+const [tasksPage, setTasksPage] = useState(1);
+
+const TASKS_PER_PAGE = 6;
+
+  /* =======================================
+     MY PROJECTS
+  ======================================= */
+
+  const [projectsPage, setProjectsPage] =
+    useState(1);
+
+  const PROJECTS_PER_PAGE = 6;
+
+  /* =======================================
+     ASSIGNED PROJECT ISSUES
+  ======================================= */
+
+  const [
+    assignedProjectIssuesPage,
+    setAssignedProjectIssuesPage,
+  ] = useState(1);
+
+ 
+
+  const ASSIGNED_PROJECT_ISSUES_PER_PAGE = 6;
+
+  /* =======================================
+     REFERRED PROJECT ISSUES
+  ======================================= */
+
+  const [
+    referredProjectIssuesPage,
+    setReferredProjectIssuesPage,
+  ] = useState(1);
+
+ 
+
+  const REFERRED_PROJECT_ISSUES_PER_PAGE = 6;
+
+  /* =======================================
+     ASSIGNED TASK ISSUES
+  ======================================= */
+
+  const [
+    assignedTaskIssuesPage,
+    setAssignedTaskIssuesPage,
+  ] = useState(1);
+
+ 
+
+  const ASSIGNED_TASK_ISSUES_PER_PAGE = 6;
+
+  /* =======================================
+     LOAD PROFILE
+  ======================================= */
 
   const loadProfile = async (showRefresh = false) => {
     try {
@@ -90,7 +147,10 @@ const Profile = () => {
 
       setProfile(data);
     } catch (err) {
-      console.error("Failed to load profile:", err);
+      console.error(
+        "Failed to load profile:",
+        err
+      );
 
       setError(
         err?.response?.data?.message ||
@@ -106,38 +166,330 @@ const Profile = () => {
     loadProfile();
   }, []);
 
-  const taskProjects = useMemo(() => {
-    if (!profile?.tasks) return [];
+  /* =======================================
+     SAFE PROFILE DATA
+  ======================================= */
 
-    return [
-      ...new Set(
-        profile.tasks.map(
-          (task) => task.projectTitle
-        )
-      ),
-    ];
-  }, [profile]);
+  const user = profile?.user || null;
 
-  const filteredTasks = useMemo(() => {
-    if (!profile?.tasks) return [];
+  const projects = profile?.projects || [];
 
-    if (taskProjectFilter === "All") {
-      return profile.tasks;
+  const tasks = profile?.tasks || [];
+
+  const assignedProjectIssues =
+    profile?.assignedProjectIssues || [];
+
+  const referredProjectIssues =
+    profile?.referredProjectIssues || [];
+
+  const assignedTaskIssues =
+    profile?.assignedTaskIssues || [];
+
+
+    /* =======================================
+   GLOBAL PROJECT FILTER
+======================================= */
+
+const [projectFilter, setProjectFilter] =
+  useState("All");
+
+  /* =======================================
+     MY TASKS - FILTER
+  ======================================= */
+
+ const filteredTasks = useMemo(() => {
+  if (projectFilter === "All") {
+    return tasks;
+  }
+
+  return tasks.filter(
+    (task) =>
+      String(task.projectId) ===
+      String(projectFilter)
+  );
+}, [tasks, projectFilter]);
+
+  const totalTaskPages = Math.ceil(
+    filteredTasks.length / TASKS_PER_PAGE
+  );
+
+  const paginatedTasks = filteredTasks.slice(
+    (tasksPage - 1) * TASKS_PER_PAGE,
+    tasksPage * TASKS_PER_PAGE
+  );
+
+  /* =======================================
+     MY PROJECTS - PAGINATION
+  ======================================= */
+
+  const totalProjectPages = Math.ceil(
+    projects.length / PROJECTS_PER_PAGE
+  );
+
+  const paginatedProjects = projects.slice(
+    (projectsPage - 1) *
+      PROJECTS_PER_PAGE,
+    projectsPage * PROJECTS_PER_PAGE
+  );
+
+  /* =======================================
+     ASSIGNED PROJECT ISSUES
+     FILTER + PAGINATION
+  ======================================= */
+
+  const filteredAssignedProjectIssues =
+  useMemo(() => {
+    if (projectFilter === "All") {
+      return assignedProjectIssues;
     }
 
-    return profile.tasks.filter(
-      (task) =>
-        task.projectTitle === taskProjectFilter
+    return assignedProjectIssues.filter(
+      (issue) =>
+        String(issue.projectId) ===
+        String(projectFilter)
     );
-  }, [profile, taskProjectFilter]);
+  }, [
+    assignedProjectIssues,
+    projectFilter,
+  ]); 
+
+  const totalAssignedProjectIssuePages =
+    Math.ceil(
+      filteredAssignedProjectIssues.length /
+        ASSIGNED_PROJECT_ISSUES_PER_PAGE
+    );
+
+  const paginatedAssignedProjectIssues =
+    filteredAssignedProjectIssues.slice(
+      (assignedProjectIssuesPage - 1) *
+        ASSIGNED_PROJECT_ISSUES_PER_PAGE,
+      assignedProjectIssuesPage *
+        ASSIGNED_PROJECT_ISSUES_PER_PAGE
+    );
+
+  /* =======================================
+     REFERRED PROJECT ISSUES
+     FILTER + PAGINATION
+  ======================================= */
+const filteredReferredProjectIssues = useMemo(() => {
+  if (projectFilter === "All") {
+    return referredProjectIssues;
+  }
+
+  return referredProjectIssues.filter(
+    (issue) => String(issue.projectId) === String(projectFilter)
+  );
+}, [referredProjectIssues, projectFilter]);
+  
+
+  const totalReferredProjectIssuePages =
+    Math.ceil(
+      filteredReferredProjectIssues.length /
+        REFERRED_PROJECT_ISSUES_PER_PAGE
+    );
+
+  const paginatedReferredProjectIssues =
+    filteredReferredProjectIssues.slice(
+      (referredProjectIssuesPage - 1) *
+        REFERRED_PROJECT_ISSUES_PER_PAGE,
+      referredProjectIssuesPage *
+        REFERRED_PROJECT_ISSUES_PER_PAGE
+    );
+
+  /* =======================================
+     ASSIGNED TASK ISSUES
+     FILTER + PAGINATION
+  ======================================= */
+
+ const filteredAssignedTaskIssues =
+  useMemo(() => {
+    if (projectFilter === "All") {
+      return assignedTaskIssues;
+    }
+
+    return assignedTaskIssues.filter(
+      (issue) =>
+        String(issue.projectId) ===
+        String(projectFilter)
+    );
+  }, [
+    assignedTaskIssues,
+    projectFilter,
+  ]);
+
+  const totalAssignedTaskIssuePages =
+    Math.ceil(
+      filteredAssignedTaskIssues.length /
+        ASSIGNED_TASK_ISSUES_PER_PAGE
+    );
+
+  const paginatedAssignedTaskIssues =
+    filteredAssignedTaskIssues.slice(
+      (assignedTaskIssuesPage - 1) *
+        ASSIGNED_TASK_ISSUES_PER_PAGE,
+      assignedTaskIssuesPage *
+        ASSIGNED_TASK_ISSUES_PER_PAGE
+    );
+
+  /* =======================================
+     RESET PAGINATION WHEN FILTER CHANGES
+  ======================================= */
+
+  useEffect(() => {
+  setTasksPage(1);
+  setAssignedProjectIssuesPage(1);
+  setReferredProjectIssuesPage(1);
+  setAssignedTaskIssuesPage(1);
+}, [projectFilter]);
+  /* =======================================
+     KEEP PROJECT PAGINATION VALID
+  ======================================= */
+
+  useEffect(() => {
+    if (
+      totalProjectPages > 0 &&
+      projectsPage > totalProjectPages
+    ) {
+      setProjectsPage(totalProjectPages);
+    }
+
+    if (
+      totalProjectPages === 0 &&
+      projectsPage !== 1
+    ) {
+      setProjectsPage(1);
+    }
+  }, [
+    totalProjectPages,
+    projectsPage,
+  ]);
+
+  /* =======================================
+     KEEP TASK PAGINATION VALID
+  ======================================= */
+
+  useEffect(() => {
+    if (
+      totalTaskPages > 0 &&
+      tasksPage > totalTaskPages
+    ) {
+      setTasksPage(totalTaskPages);
+    }
+
+    if (
+      totalTaskPages === 0 &&
+      tasksPage !== 1
+    ) {
+      setTasksPage(1);
+    }
+  }, [
+    totalTaskPages,
+    tasksPage,
+  ]);
+
+  /* =======================================
+     KEEP ASSIGNED PROJECT ISSUE PAGINATION
+     VALID
+  ======================================= */
+
+  useEffect(() => {
+    if (
+      totalAssignedProjectIssuePages > 0 &&
+      assignedProjectIssuesPage >
+        totalAssignedProjectIssuePages
+    ) {
+      setAssignedProjectIssuesPage(
+        totalAssignedProjectIssuePages
+      );
+    }
+
+    if (
+      totalAssignedProjectIssuePages === 0 &&
+      assignedProjectIssuesPage !== 1
+    ) {
+      setAssignedProjectIssuesPage(1);
+    }
+  }, [
+    totalAssignedProjectIssuePages,
+    assignedProjectIssuesPage,
+  ]);
+
+  /* =======================================
+     KEEP REFERRED ISSUE PAGINATION VALID
+  ======================================= */
+
+  useEffect(() => {
+    if (
+      totalReferredProjectIssuePages > 0 &&
+      referredProjectIssuesPage >
+        totalReferredProjectIssuePages
+    ) {
+      setReferredProjectIssuesPage(
+        totalReferredProjectIssuePages
+      );
+    }
+
+    if (
+      totalReferredProjectIssuePages === 0 &&
+      referredProjectIssuesPage !== 1
+    ) {
+      setReferredProjectIssuesPage(1);
+    }
+  }, [
+    totalReferredProjectIssuePages,
+    referredProjectIssuesPage,
+  ]);
+
+  /* =======================================
+     KEEP ASSIGNED TASK ISSUE PAGINATION
+     VALID
+  ======================================= */
+
+  useEffect(() => {
+    if (
+      totalAssignedTaskIssuePages > 0 &&
+      assignedTaskIssuesPage >
+        totalAssignedTaskIssuePages
+    ) {
+      setAssignedTaskIssuesPage(
+        totalAssignedTaskIssuePages
+      );
+    }
+
+    if (
+      totalAssignedTaskIssuePages === 0 &&
+      assignedTaskIssuesPage !== 1
+    ) {
+      setAssignedTaskIssuesPage(1);
+    }
+  }, [
+    totalAssignedTaskIssuePages,
+    assignedTaskIssuesPage,
+  ]);
+
+  /* =======================================
+     NAVIGATION
+  ======================================= */
 
   const openProject = (projectId) => {
-    navigate(`/projects/${projectId}`);
+    navigate(`/projects/${projectId}`, {
+      state: {
+        from: "profile",
+      },
+    });
   };
 
-  const openTask = (projectId, taskId) => {
+  const openTask = (
+    projectId,
+    taskId
+  ) => {
     navigate(
-      `/projects/${projectId}/tasks/${taskId}`
+      `/projects/${projectId}/tasks/${taskId}`,
+      {
+        state: {
+          from: "profile",
+        },
+      }
     );
   };
 
@@ -146,7 +498,12 @@ const Profile = () => {
     issueId
   ) => {
     navigate(
-      `/projects/${projectId}/issues/${issueId}`
+      `/projects/${projectId}/issues/${issueId}`,
+      {
+        state: {
+          from: "profile",
+        },
+      }
     );
   };
 
@@ -156,13 +513,19 @@ const Profile = () => {
     issueId
   ) => {
     navigate(
-      `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`
+      `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`,
+      {
+        state: {
+          from: "profile",
+        },
+      }
     );
   };
 
-  // -----------------------------
-  // LOADING
-  // -----------------------------
+  /* =======================================
+     LOADING
+  ======================================= */
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -186,9 +549,10 @@ const Profile = () => {
     );
   }
 
-  // -----------------------------
-  // ERROR
-  // -----------------------------
+  /* =======================================
+     ERROR
+  ======================================= */
+
   if (error) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -205,6 +569,7 @@ const Profile = () => {
             </p>
 
             <button
+              type="button"
               onClick={() => loadProfile()}
               className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium transition hover:bg-white/10"
             >
@@ -221,14 +586,9 @@ const Profile = () => {
     return null;
   }
 
-  const {
-    user,
-    projects = [],
-    tasks = [],
-    assignedProjectIssues = [],
-    referredProjectIssues = [],
-    assignedTaskIssues = [],
-  } = profile;
+  /* =======================================
+     MAIN PROFILE UI
+  ======================================= */
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
@@ -237,6 +597,7 @@ const Profile = () => {
         {/* =====================================
             HEADER / USER DETAILS
         ===================================== */}
+
         <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
           <div className="p-6 sm:p-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -256,20 +617,23 @@ const Profile = () => {
                   </h1>
 
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+
                     <span className="inline-flex items-center gap-1.5">
                       <Mail className="h-4 w-4" />
-                      {user?.email}
+                      {user?.email || "No email"}
                     </span>
 
                     <span className="inline-flex items-center gap-1.5">
                       <ShieldCheck className="h-4 w-4" />
-                      ID: {user?.userCode}
+                      ID: {user?.userCode || "N/A"}
                     </span>
+
                   </div>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() => loadProfile(true)}
                 disabled={refreshing}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
@@ -286,6 +650,7 @@ const Profile = () => {
                   ? "Refreshing..."
                   : "Refresh"}
               </button>
+
             </div>
           </div>
         </section>
@@ -293,6 +658,7 @@ const Profile = () => {
         {/* =====================================
             SUMMARY
         ===================================== */}
+
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
           <SummaryCard
@@ -327,6 +693,7 @@ const Profile = () => {
         {/* =====================================
             MY PROJECTS
         ===================================== */}
+
         <ProfileSection
           title="My Projects"
           description="Projects where you are the owner or a member."
@@ -335,101 +702,108 @@ const Profile = () => {
           {projects.length === 0 ? (
             <EmptyState message="You are not part of any projects yet." />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {projects.map((project) => (
-                <button
-                  key={project._id}
-                  onClick={() =>
-                    openProject(project._id)
-                  }
-                  className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-slate-100">
-                        {project.title}
-                      </h3>
+            <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
-                        {project.description ||
-                          "No project description."}
-                      </p>
-                    </div>
-
-                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-300" />
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-lg border px-2.5 py-1 text-xs ${getStatusClasses(
-                        project.status
-                      )}`}
+                {paginatedProjects.map(
+                  (project) => (
+                    <button
+                      key={project._id}
+                      type="button"
+                      onClick={() =>
+                        openProject(project._id)
+                      }
+                      className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
                     >
-                      {project.status}
-                    </span>
+                      <div className="flex items-start justify-between gap-4">
 
-                    <span className="rounded-lg border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-xs text-indigo-300">
-                      {project.role}
-                    </span>
-                  </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold text-slate-100">
+                            {project.title}
+                          </h3>
 
-                  {project.technologies?.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {project.technologies
-                        .slice(0, 4)
-                        .map((technology) => (
-                          <span
-                            key={technology}
-                            className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-slate-400"
-                          >
-                            {technology}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
+                            {project.description ||
+                              "No project description."}
+                          </p>
+                        </div>
+
+                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-300" />
+
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-2">
+
+                        <span
+                          className={`rounded-lg border px-2.5 py-1 text-xs ${getStatusClasses(
+                            project.status
+                          )}`}
+                        >
+                          {project.status}
+                        </span>
+
+                        <span className="rounded-lg border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-xs text-indigo-300">
+                          {project.role}
+                        </span>
+
+                      </div>
+
+                      {project.technologies?.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-1.5">
+
+                          {project.technologies
+                            .slice(0, 4)
+                            .map((technology) => (
+                              <span
+                                key={technology}
+                                className="rounded-md bg-white/5 px-2 py-1 text-[11px] text-slate-400"
+                              >
+                                {technology}
+                              </span>
+                            ))}
+
+                        </div>
+                      )}
+
+                    </button>
+                  )
+                )}
+
+              </div>
+
+              {totalProjectPages > 1 && (
+                <Pagination
+                  currentPage={projectsPage}
+                  totalPages={totalProjectPages}
+                  onPageChange={setProjectsPage}
+                />
+              )}
+            </>
           )}
         </ProfileSection>
 
         {/* =====================================
+    GLOBAL PROJECT FILTER
+===================================== */}
+
+<div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+  <FilterBar
+    value={projectFilter}
+    onChange={setProjectFilter}
+    projects={projects}
+  />
+</div>
+
+        {/* =====================================
             MY TASKS
         ===================================== */}
+
         <ProfileSection
           title="My Tasks"
           description="Tasks currently assigned to you."
           icon={ListTodo}
         >
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="inline-flex items-center gap-2 text-sm text-slate-400">
-              <Filter className="h-4 w-4" />
-              Filter by project
-            </div>
-
-            <select
-              value={taskProjectFilter}
-              onChange={(event) =>
-                setTaskProjectFilter(
-                  event.target.value
-                )
-              }
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-indigo-400/40"
-            >
-              <option value="All">
-                All Projects
-              </option>
-
-              {taskProjects.map((project) => (
-                <option
-                  key={project}
-                  value={project}
-                >
-                  {project}
-                </option>
-              ))}
-            </select>
-          </div>
+         
 
           {filteredTasks.length === 0 ? (
             <EmptyState
@@ -440,143 +814,257 @@ const Profile = () => {
               }
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredTasks.map((task) => (
-                <button
-                  key={`${task.projectId}-${task._id}`}
-                  onClick={() =>
-                    openTask(
-                      task.projectId,
-                      task._id
-                    )
-                  }
-                  className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="mb-1 text-xs text-indigo-300">
-                        {task.projectTitle}
-                      </p>
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
 
-                      <h3 className="font-semibold text-slate-100">
-                        {task.title}
-                      </h3>
-
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
-                        {task.description ||
-                          "No task description."}
-                      </p>
-                    </div>
-
-                    <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-300" />
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <span
-                      className={`rounded-lg border px-2.5 py-1 text-xs ${getStatusClasses(
-                        task.status
-                      )}`}
+                {paginatedTasks.map(
+                  (task) => (
+                    <button
+                      key={`${task.projectId}-${task._id}`}
+                      type="button"
+                      onClick={() =>
+                        openTask(
+                          task.projectId,
+                          task._id
+                        )
+                      }
+                      className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
                     >
-                      {task.status}
-                    </span>
+                      <div className="flex items-start justify-between gap-4">
 
-                    <span
-                      className={`rounded-lg border px-2.5 py-1 text-xs ${getPriorityClasses(
-                        task.priority
-                      )}`}
-                    >
-                      {task.priority}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
+                        <div className="min-w-0">
+
+                          <p className="mb-1 text-xs text-indigo-300">
+                            {task.projectTitle}
+                          </p>
+
+                          <h3 className="font-semibold text-slate-100">
+                            {task.title}
+                          </h3>
+
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
+                            {task.description ||
+                              "No task description."}
+                          </p>
+
+                        </div>
+
+                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-300" />
+
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap gap-2">
+
+                        <span
+                          className={`rounded-lg border px-2.5 py-1 text-xs ${getStatusClasses(
+                            task.status
+                          )}`}
+                        >
+                          {task.status}
+                        </span>
+
+                        <span
+                          className={`rounded-lg border px-2.5 py-1 text-xs ${getPriorityClasses(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
+
+                      </div>
+
+                    </button>
+                  )
+                )}
+
+              </div>
+
+              {totalTaskPages > 1 && (
+                <Pagination
+                  currentPage={tasksPage}
+                  totalPages={totalTaskPages}
+                  onPageChange={setTasksPage}
+                />
+              )}
+            </>
           )}
         </ProfileSection>
 
         {/* =====================================
             ASSIGNED PROJECT ISSUES
         ===================================== */}
+
         <ProfileSection
           title="Assigned Project Issues"
-          description="Project-level issues assigned directly to you."
+          description="Project-level issues currently assigned to you."
           icon={CircleAlert}
         >
-          {assignedProjectIssues.length === 0 ? (
-            <EmptyState message="No project-level issues are assigned to you." />
+         
+          {filteredAssignedProjectIssues.length ===
+          0 ? (
+            <EmptyState
+              message={
+                assignedProjectIssues.length === 0
+                  ? "No project-level issues are currently assigned to you."
+                  : "No issues match this project filter."
+              }
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {assignedProjectIssues.map((issue) => (
-                <IssueCard
-                  key={issue._id}
-                  issue={issue}
-                  onClick={() =>
-                    openProjectIssue(
-                      issue.projectId,
-                      issue._id
-                    )
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+
+                {paginatedAssignedProjectIssues.map(
+                  (issue) => (
+                    <IssueCard
+                      key={issue._id}
+                      issue={issue}
+                      onClick={() =>
+                        openProjectIssue(
+                          issue.projectId,
+                          issue._id
+                        )
+                      }
+                    />
+                  )
+                )}
+
+              </div>
+
+              {totalAssignedProjectIssuePages >
+                1 && (
+                <Pagination
+                  currentPage={
+                    assignedProjectIssuesPage
+                  }
+                  totalPages={
+                    totalAssignedProjectIssuePages
+                  }
+                  onPageChange={
+                    setAssignedProjectIssuesPage
                   }
                 />
-              ))}
-            </div>
+              )}
+            </>
           )}
         </ProfileSection>
 
         {/* =====================================
             REFERRED PROJECT ISSUES
         ===================================== */}
+
         <ProfileSection
           title="Referred Project Issues"
           description="Project-level issues referred to you."
           icon={Forward}
         >
-          {referredProjectIssues.length === 0 ? (
-            <EmptyState message="No project-level issues have been referred to you." />
+         
+
+          {filteredReferredProjectIssues.length ===
+          0 ? (
+            <EmptyState
+              message={
+                referredProjectIssues.length === 0
+                  ? "No project-level issues have been referred to you."
+                  : "No issues match this project filter."
+              }
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {referredProjectIssues.map((issue) => (
-                <IssueCard
-                  key={issue._id}
-                  issue={issue}
-                  onClick={() =>
-                    openProjectIssue(
-                      issue.projectId,
-                      issue._id
-                    )
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+
+                {paginatedReferredProjectIssues.map(
+                  (issue) => (
+                    <IssueCard
+                      key={issue._id}
+                      issue={issue}
+                      onClick={() =>
+                        openProjectIssue(
+                          issue.projectId,
+                          issue._id
+                        )
+                      }
+                    />
+                  )
+                )}
+
+              </div>
+
+              {totalReferredProjectIssuePages >
+                1 && (
+                <Pagination
+                  currentPage={
+                    referredProjectIssuesPage
+                  }
+                  totalPages={
+                    totalReferredProjectIssuePages
+                  }
+                  onPageChange={
+                    setReferredProjectIssuesPage
                   }
                 />
-              ))}
-            </div>
+              )}
+            </>
           )}
         </ProfileSection>
 
         {/* =====================================
             ASSIGNED TASK ISSUES
         ===================================== */}
+
         <ProfileSection
           title="Assigned Task Issues"
-          description="Issues belonging to your assigned tasks."
-          icon={CheckCircle2}
+          description="Task-level issues currently assigned to you."
+          icon={CircleAlert}
         >
-          {assignedTaskIssues.length === 0 ? (
-            <EmptyState message="No task-level issues are assigned to you." />
+        
+
+          {filteredAssignedTaskIssues.length ===
+          0 ? (
+            <EmptyState
+              message={
+                assignedTaskIssues.length === 0
+                  ? "No task-level issues are currently assigned to you."
+                  : "No issues match this project filter."
+              }
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {assignedTaskIssues.map((issue) => (
-                <IssueCard
-                  key={issue._id}
-                  issue={issue}
-                  taskIssue
-                  onClick={() =>
-                    openTaskIssue(
-                      issue.projectId,
-                      issue.taskId,
-                      issue._id
-                    )
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+
+                {paginatedAssignedTaskIssues.map(
+                  (issue) => (
+                    <IssueCard
+                      key={issue._id}
+                      issue={issue}
+                      taskIssue
+                      onClick={() =>
+                        openTaskIssue(
+                          issue.projectId,
+                          issue.taskId,
+                          issue._id
+                        )
+                      }
+                    />
+                  )
+                )}
+
+              </div>
+
+              {totalAssignedTaskIssuePages >
+                1 && (
+                <Pagination
+                  currentPage={
+                    assignedTaskIssuesPage
+                  }
+                  totalPages={
+                    totalAssignedTaskIssuePages
+                  }
+                  onPageChange={
+                    setAssignedTaskIssuesPage
                   }
                 />
-              ))}
-            </div>
+              )}
+            </>
           )}
         </ProfileSection>
 
@@ -584,6 +1072,120 @@ const Profile = () => {
     </div>
   );
 };
+
+/* =========================================
+   PAGINATION
+========================================= */
+
+const Pagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}) => {
+  return (
+    <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+
+      <button
+        type="button"
+        onClick={() =>
+          onPageChange((page) =>
+            Math.max(1, page - 1)
+          )
+        }
+        disabled={currentPage === 1}
+        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Previous
+      </button>
+
+      <div className="flex max-w-full items-center justify-center gap-2 overflow-x-auto px-1 pb-1">
+        {Array.from(
+          { length: totalPages },
+          (_, index) => index + 1
+        ).map((page) => (
+          <button
+            key={page}
+            type="button"
+            onClick={() =>
+              onPageChange(page)
+            }
+            className={`h-9 min-w-9 shrink-0 rounded-lg px-3 text-sm font-medium transition ${
+              currentPage === page
+                ? "bg-indigo-500 text-white"
+                : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() =>
+          onPageChange((page) =>
+            Math.min(
+              totalPages,
+              page + 1
+            )
+          )
+        }
+        disabled={currentPage === totalPages}
+        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Next
+      </button>
+
+    </div>
+  );
+};
+
+/* =========================================
+   FILTER BAR
+========================================= */
+
+const FilterBar = ({
+  value,
+  onChange,
+  projects,
+}) => {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-200">
+          <Filter className="h-4 w-4 text-indigo-300" />
+          Filter by project
+        </div>
+
+        <p className="mt-1 text-xs text-slate-500">
+          Applies to your tasks and assigned or referred issues.
+        </p>
+      </div>
+
+      <select
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 outline-none transition focus:border-indigo-400/40 sm:w-72"
+      >
+        <option value="All">
+          All Projects
+        </option>
+
+        {projects.map((project) => (
+          <option
+            key={project._id}
+            value={project._id}
+          >
+            {project.title}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+};
+        
 
 /* =========================================
    SUMMARY CARD
@@ -596,7 +1198,9 @@ const SummaryCard = ({
 }) => {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition duration-200 hover:border-white/15 hover:bg-white/[0.05]">
+
       <div className="flex items-center justify-between">
+
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
           <Icon className="h-5 w-5 text-indigo-300" />
         </div>
@@ -604,11 +1208,13 @@ const SummaryCard = ({
         <span className="text-2xl font-bold text-white">
           {value}
         </span>
+
       </div>
 
       <p className="mt-4 text-sm text-slate-400">
         {label}
       </p>
+
     </div>
   );
 };
@@ -625,7 +1231,9 @@ const ProfileSection = ({
 }) => {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+
       <div className="mb-5 flex items-start gap-3">
+
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5">
           <Icon className="h-5 w-5 text-indigo-300" />
         </div>
@@ -639,9 +1247,11 @@ const ProfileSection = ({
             {description}
           </p>
         </div>
+
       </div>
 
       {children}
+
     </section>
   );
 };
@@ -657,11 +1267,14 @@ const IssueCard = ({
 }) => {
   return (
     <button
+      type="button"
       onClick={onClick}
       className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-left transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
     >
       <div className="flex items-start justify-between gap-4">
+
         <div className="min-w-0">
+
           <p className="mb-1 text-xs text-indigo-300">
             {issue.projectTitle}
           </p>
@@ -680,12 +1293,15 @@ const IssueCard = ({
             {issue.description ||
               "No issue description."}
           </p>
+
         </div>
 
         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-slate-500 transition group-hover:translate-x-1 group-hover:text-slate-300" />
+
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
+
         <span
           className={`rounded-lg border px-2.5 py-1 text-xs ${getStatusClasses(
             issue.status
@@ -701,10 +1317,12 @@ const IssueCard = ({
         >
           {issue.priority}
         </span>
+
       </div>
 
       {issue.labels?.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-1.5">
+
           {issue.labels
             .slice(0, 4)
             .map((label) => (
@@ -715,15 +1333,10 @@ const IssueCard = ({
                 {label}
               </span>
             ))}
+
         </div>
       )}
 
-      {issue.updatedAt && (
-        <div className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
-          <Clock3 className="h-3.5 w-3.5" />
-          Updated {formatDate(issue.updatedAt)}
-        </div>
-      )}
     </button>
   );
 };

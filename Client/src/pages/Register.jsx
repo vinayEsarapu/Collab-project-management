@@ -16,8 +16,7 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-
+  const { name, value } = event.target;
     setFormData({
       ...formData,
       [name]: value,

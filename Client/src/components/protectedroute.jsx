@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
+import PageLoader from "../pages/PageLoader";
 
 function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <PageLoader />;
   }
 
   if (!isAuthenticated) {
@@ -14,6 +15,5 @@ function ProtectedRoute() {
 
   return <Outlet />;
 }
-
 
 export default ProtectedRoute;

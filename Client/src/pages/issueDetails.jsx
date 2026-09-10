@@ -1,200 +1,311 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
 import api from "../services/api";
 import IssueForm from "../components/issues/issueform";
 import {
   updateIssue,
   deleteIssue,
-   getTaskIssueById,
+  getTaskIssueById,
 } from "../services/issueservices";
-import {getProjectById} from "../services/projectservices";
+import { getProjectById } from "../services/projectservices";
 import { createComment } from "../services/commentService";
 
-
 function IssueDetails() {
-  const { id: projectId, taskId, issueId } = useParams();
+  const {
+    id: projectId,
+    taskId,
+    issueId,
+  } = useParams();
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [issue, setIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showEditForm, setShowEditForm] = useState(false);
+  const [showEditForm, setShowEditForm] =
+    useState(false);
   const [deleting, setDeleting] = useState(false);
   const [project, setProject] = useState(null);
-  const [commentText, setCommentText] = useState("");
-const [postingComment, setPostingComment] = useState(false);
+  const [commentText, setCommentText] =
+    useState("");
+  const [postingComment, setPostingComment] =
+    useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+    useState(false);
+
+  /*
+   * --------------------------------------------------
+   * Navigation paths
+   * --------------------------------------------------
+   */
 
   const issueCommentsPath = taskId
-  ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/comments`
-  : `/projects/${projectId}/issues/${issueId}/comments`;
+    ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/comments`
+    : `/projects/${projectId}/issues/${issueId}/comments`;
 
-const issueActivityPath = taskId
-  ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/activity`
-  : `/projects/${projectId}/issues/${issueId}/activity`;
-  
+  const issueActivityPath = taskId
+    ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}/activity`
+    : `/projects/${projectId}/issues/${issueId}/activity`;
+
   const backToIssuesPath = taskId
-  ? `/projects/${projectId}/tasks/${taskId}/issues`
-  : `/projects/${projectId}/issues`;
+    ? `/projects/${projectId}/tasks/${taskId}/issues`
+    : `/projects/${projectId}/issues`;
 
+  /*
+   * --------------------------------------------------
+   * Contextual Back Navigation
+   *
+   * Profile -> Issue -> Back -> Profile
+   *
+   * Normal navigation keeps the original behavior:
+   * Project Issue -> Project Issues
+   * Task Issue -> Task Issues
+   * --------------------------------------------------
+   */
+
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/profile");
+      return;
+    }
+
+    navigate(backToIssuesPath);
+  };
+
+  /*
+   * --------------------------------------------------
+   * Permissions
+   * --------------------------------------------------
+   */
 
   const isOwner =
-  user?._id &&
-  project?.owner?._id &&
-  user._id.toString() === project.owner._id.toString();
+    user?._id &&
+    project?.owner?._id &&
+    user._id.toString() ===
+      project.owner._id.toString();
 
-const isCreator =
-  user?._id &&
-  issue?.createdBy?._id &&
-  user._id.toString() === issue.createdBy._id.toString();
+  const isCreator =
+    user?._id &&
+    issue?.createdBy?._id &&
+    user._id.toString() ===
+      issue.createdBy._id.toString();
 
-const isAssignee =
-  user?._id &&
-  issue?.assignedTo?._id &&
-  user._id.toString() === issue.assignedTo._id.toString();
+  const isAssignee =
+    user?._id &&
+    issue?.assignedTo?._id &&
+    user._id.toString() ===
+      issue.assignedTo._id.toString();
 
-const canEdit =
-  Boolean(isOwner || isCreator || isAssignee);
+  const canEdit = Boolean(
+    isOwner ||
+      isCreator ||
+      isAssignee
+  );
 
-  const [showDeleteConfirm, setShowDeleteConfirm] =
-  useState(false);
+  /*
+   * --------------------------------------------------
+   * Fetch Project
+   * --------------------------------------------------
+   */
 
   const fetchProject = async () => {
-  try {
-    const data = await getProjectById(projectId);
+    try {
+      const data =
+        await getProjectById(projectId);
 
-    setProject(data);
-  } catch (error) {
-    console.error("Failed to load project:", error);
-  }
-};
-
-const handlePostComment = async (event) => {
-  event.preventDefault();
-
-  const content = commentText.trim();
-
-  if (!content) {
-    return;
-  }
-
-  try {
-    setPostingComment(true);
-    setError("");
-
-    await createComment(
-      issueId,
-      content,
-      taskId || null
-    );
-
-    setCommentText("");
-  } catch (error) {
-    setError(
-      error.response?.data?.message ||
-        "Failed to post comment."
-    );
-  } finally {
-    setPostingComment(false);
-  }
-};
-
-const handleUpdateIssue = async (issueData) => {
-  try {
-    let data;
-
-    if (taskId) {
-      const response = await api.put(
-        `/issues/task/${taskId}/${issueId}`,
-        issueData
+      setProject(data);
+    } catch (error) {
+      console.error(
+        "Failed to load project:",
+        error
       );
+    }
+  };
 
-      data = response.data;
-    } else {
-      data = await updateIssue(
+  /*
+   * --------------------------------------------------
+   * Post Comment
+   * --------------------------------------------------
+   */
+
+  const handlePostComment = async (event) => {
+    event.preventDefault();
+
+    const content = commentText.trim();
+
+    if (!content) {
+      return;
+    }
+
+    try {
+      setPostingComment(true);
+      setError("");
+
+      await createComment(
         issueId,
-        issueData
+        content,
+        taskId || null
+      );
+
+      setCommentText("");
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to post comment."
+      );
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  /*
+   * --------------------------------------------------
+   * Update Issue
+   * --------------------------------------------------
+   */
+
+  const handleUpdateIssue = async (
+    issueData
+  ) => {
+    try {
+      let data;
+
+      if (taskId) {
+        const response = await api.put(
+          `/issues/task/${taskId}/${issueId}`,
+          issueData
+        );
+
+        data = response.data;
+      } else {
+        data = await updateIssue(
+          issueId,
+          issueData
+        );
+      }
+
+      setIssue(data.issue || data);
+      setShowEditForm(false);
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to update issue."
       );
     }
+  };
 
-    setIssue(data.issue || data);
+  /*
+   * --------------------------------------------------
+   * Delete Issue
+   * --------------------------------------------------
+   */
 
-    setShowEditForm(false);
-  } catch (error) {
-    throw new Error(
-      error.response?.data?.message ||
-        "Failed to update issue."
-    );
-  }
-};
+  const handleDeleteIssue = async () => {
+    try {
+      setDeleting(true);
+      setError("");
 
-const handleDeleteIssue = async () => {
-  try {
-    setDeleting(true);
-    setError("");
+      if (taskId) {
+        await api.delete(
+          `/issues/task/${taskId}/${issueId}`
+        );
+      } else {
+        await deleteIssue(issueId);
+      }
 
-    if (taskId) {
-      await api.delete(
-        `/issues/task/${taskId}/${issueId}`
+      /*
+       * If the issue was opened from Profile,
+       * return to Profile after deletion.
+       *
+       * Otherwise preserve the existing behavior
+       * and return to the appropriate issue list.
+       */
+      if (location.state?.from === "profile") {
+        navigate("/profile");
+        return;
+      }
+
+      navigate(backToIssuesPath);
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to delete issue."
       );
-
-      navigate(
-        `/projects/${projectId}/tasks/${taskId}/issues`
-      );
-    } else {
-      await deleteIssue(issueId);
-
-      navigate(
-        `/projects/${projectId}/issues`
-      );
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
-  } catch (error) {
-    setError(
-      error.response?.data?.message ||
-        "Failed to delete issue."
-    );
-  } finally {
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-  }
-};
+  };
 
-  
-const fetchIssue = async () => {
-  try {
-    setLoading(true);
-    setError("");
+  /*
+   * --------------------------------------------------
+   * Fetch Issue
+   * --------------------------------------------------
+   */
 
-    let data;
+  const fetchIssue = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    if (taskId) {
-      data = await getTaskIssueById(taskId, issueId);
-    } else {
-      const response = await api.get(`/issues/${issueId}`);
-      data = response.data;
+      let data;
+
+      if (taskId) {
+        data = await getTaskIssueById(
+          taskId,
+          issueId
+        );
+      } else {
+        const response = await api.get(
+          `/issues/${issueId}`
+        );
+
+        data = response.data;
+      }
+
+      setIssue(data.issue || data);
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+          "Failed to load issue."
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setIssue(data.issue || data);
-  } catch (error) {
-    setError(
-      error.response?.data?.message ||
-        "Failed to load issue."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  /*
+   * --------------------------------------------------
+   * Load Issue + Project
+   * --------------------------------------------------
+   */
+
   useEffect(() => {
-  if (issueId) {
-    fetchIssue();
-  }
+    if (issueId) {
+      fetchIssue();
+    }
 
-  if (projectId) {
-    fetchProject();
-  }
-}, [issueId, projectId]);
+    if (projectId) {
+      fetchProject();
+    }
+  }, [issueId, projectId]);
+
+  /*
+   * --------------------------------------------------
+   * Status Styles
+   * --------------------------------------------------
+   */
 
   const getStatusStyle = (status) => {
     const styles = {
@@ -217,6 +328,12 @@ const fetchIssue = async () => {
     );
   };
 
+  /*
+   * --------------------------------------------------
+   * Priority Styles
+   * --------------------------------------------------
+   */
+
   const getPriorityStyle = (priority) => {
     const styles = {
       Low: "text-slate-400",
@@ -225,8 +342,17 @@ const fetchIssue = async () => {
       Critical: "text-red-300",
     };
 
-    return styles[priority] || "text-slate-300";
+    return (
+      styles[priority] ||
+      "text-slate-300"
+    );
   };
+
+  /*
+   * --------------------------------------------------
+   * Loading State
+   * --------------------------------------------------
+   */
 
   if (loading) {
     return (
@@ -244,16 +370,23 @@ const fetchIssue = async () => {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * Error State
+   * --------------------------------------------------
+   */
+
   if (error) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
         <div className="mx-auto max-w-5xl">
-          <Link
-            to={backToIssuesPath}
+          <button
+            type="button"
+            onClick={handleBack}
             className="mb-6 inline-flex items-center text-sm text-slate-400 transition hover:text-white"
-              >
-          ← Back to Issues
-        </Link>
+          >
+            ← Back to Issues
+          </button>
 
           <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6">
             <h2 className="text-lg font-semibold text-red-300">
@@ -276,23 +409,32 @@ const fetchIssue = async () => {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * Issue Not Found
+   * --------------------------------------------------
+   */
+
   if (!issue) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white">
         <div className="mx-auto max-w-5xl">
-          <Link
-           to={`/projects/${projectId}`}
-           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
           >
-          ← Back to Project
-          </Link>
+            ← Back to Issues
+          </button>
+
           <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center">
             <h2 className="text-xl font-semibold">
               Issue not found
             </h2>
 
             <p className="mt-2 text-sm text-slate-500">
-              The issue may have been deleted or does not exist.
+              The issue may have been deleted or
+              does not exist.
             </p>
           </div>
         </div>
@@ -300,26 +442,29 @@ const fetchIssue = async () => {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * Main UI
+   * --------------------------------------------------
+   */
+
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
 
         {/* Back */}
-        <Link
-          to={
-  taskId
-    ? `/projects/${projectId}/tasks/${taskId}/issues`
-    : `/projects/${projectId}/issues`
-}
+        <button
+          type="button"
+          onClick={handleBack}
           className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
-         >
-           ← Back to Issues
-       </Link>
+        >
+          ← Back to Issues
+        </button>
 
         {/* Header */}
         <div className="mt-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            
+
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
                 Issue
@@ -328,8 +473,6 @@ const fetchIssue = async () => {
               <h1 className="mt-2 break-words text-2xl font-bold tracking-tight sm:text-4xl">
                 {issue.title}
               </h1>
-
-             
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -352,7 +495,7 @@ const fetchIssue = async () => {
           </div>
         </div>
 
-        {/* Main content */}
+        {/* Main Content */}
         <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
 
           {/* Description */}
@@ -362,7 +505,8 @@ const fetchIssue = async () => {
             </h2>
 
             <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-              {issue.description || "No description provided."}
+              {issue.description ||
+                "No description provided."}
             </div>
           </section>
 
@@ -400,19 +544,19 @@ const fetchIssue = async () => {
                 </p>
               </div>
 
-              {/* Assignee */}
-            {/* Assigned To */}
-            <div>
-  <p className="text-xs text-slate-500">
-    Assigned To
-  </p>
+              {/* Assigned To */}
+              <div>
+                <p className="text-xs text-slate-500">
+                  Assigned To
+                </p>
 
-  <p className="mt-1 text-sm font-medium text-white">
-    {issue.assignedTo?.name ||
-      issue.assignedTo?.email ||
-      "Unassigned"}
-  </p>
-</div>
+                <p className="mt-1 text-sm font-medium text-white">
+                  {issue.assignedTo?.name ||
+                    issue.assignedTo?.email ||
+                    "Unassigned"}
+                </p>
+              </div>
+
               {/* Created By */}
               <div>
                 <p className="text-xs text-slate-500">
@@ -449,166 +593,185 @@ const fetchIssue = async () => {
             </h2>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {issue.labels.map((label, index) => (
-                <span
-                  key={`${label}-${index}`}
-                  className="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-xs font-medium text-indigo-300"
-                >
-                  #{label}
-                </span>
-              ))}
+              {issue.labels.map(
+                (label, index) => (
+                  <span
+                    key={`${label}-${index}`}
+                    className="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-xs font-medium text-indigo-300"
+                  >
+                    #{label}
+                  </span>
+                )
+              )}
             </div>
           </section>
         )}
 
-       {/* Comments */}
+        {/* Comments */}
+        <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Post Comments
+            </h2>
 
-<section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm">
-  <div>
-    <h2 className="text-lg font-semibold text-white">
-      Post Comments
-    </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Add a comment to this issue.
+            </p>
+          </div>
 
-    <p className="mt-1 text-sm text-slate-400">
-      Add a comment to this issue.
-    </p>
-  </div>
+          <form
+            onSubmit={handlePostComment}
+            className="mt-5"
+          >
+            <textarea
+              value={commentText}
+              onChange={(e) =>
+                setCommentText(
+                  e.target.value
+                )
+              }
+              placeholder="Write a comment..."
+              rows={4}
+              className="w-full resize-none rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-white/20"
+            />
 
-  <form
-    onSubmit={handlePostComment}
-    className="mt-5"
-  >
-    <textarea
-      value={commentText}
-      onChange={(e) =>
-        setCommentText(e.target.value)
-      }
-      placeholder="Write a comment..."
-      rows={4}
-      className="w-full resize-none rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-white/20"
-    />
-
-    <div className="mt-3 flex justify-end">
-      <button
-        type="submit"
-        disabled={
-          postingComment ||
-          !commentText.trim()
-        }
-        className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {postingComment
-          ? "Posting..."
-          : "Post Comment"}
-      </button>
-    </div>
-  </form>
-</section>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="submit"
+                disabled={
+                  postingComment ||
+                  !commentText.trim()
+                }
+                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {postingComment
+                  ? "Posting..."
+                  : "Post Comment"}
+              </button>
+            </div>
+          </form>
+        </section>
 
         {/* Actions */}
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          {/* View Activity */}
-        {/* View Comments */}
 
-      
-
-<Link
+          {/* View Comments */}
+         <Link
   to={issueCommentsPath}
+  state={
+    location.state?.from === "profile"
+      ? {
+          from: "profile",
+        }
+      : undefined
+  }
   className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-5 py-3 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:text-indigo-200"
 >
   View Comments
 </Link>
 
-
-{/* View Activity */}
-
-<Link
-  to={issueActivityPath}
-  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
->
-  View Activity
-</Link>
-          {/* <button
-  onClick={() =>
-    navigate(
-      taskId
-        ? `/projects/${projectId}/tasks/${taskId}/issues`
-        : `/projects/${projectId}/issues`
-    )
-  }
-  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
->
-  Back to Issues
-</button> */}
-          {isOwner && (
-          <button
-            onClick={()=>setShowDeleteConfirm(true)}
-            disabled={deleting}
-            className="rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-            {deleting ? "Deleting..." : "Delete Issue"}
-          </button>
-          )}
-          {canEdit && (
-          <button
-           onClick={() => setShowEditForm(true)}
-           className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
+          {/* View Activity */}
+          <Link
+            to={issueActivityPath}
+            className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
           >
-           Edit Issue
-          </button>
+            View Activity
+          </Link>
+
+          {/* Delete */}
+          {isOwner && (
+            <button
+              onClick={() =>
+                setShowDeleteConfirm(true)
+              }
+              disabled={deleting}
+              className="rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deleting
+                ? "Deleting..."
+                : "Delete Issue"}
+            </button>
+          )}
+
+          {/* Edit */}
+          {canEdit && (
+            <button
+              onClick={() =>
+                setShowEditForm(true)
+              }
+              className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400"
+            >
+              Edit Issue
+            </button>
           )}
         </div>
       </div>
+
+      {/* Edit Issue Form */}
       {showEditForm && (
-       <IssueForm
-         project={project}
-    projectId={projectId}
-    taskId={taskId}
-    issue={issue}
-    canAssign={taskId ? false : isOwner}
-    members={taskId ? [] : project?.members || []}
-    onSubmit={handleUpdateIssue}
-    onClose={() => setShowEditForm(false)}
-      />
-)}
-
-{showDeleteConfirm && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
-      <h2 className="text-lg font-semibold text-white">
-        Delete Issue?
-      </h2>
-
-      <p className="mt-2 text-sm leading-6 text-slate-400">
-        Are you sure you want to delete this issue?
-        This action cannot be undone.
-      </p>
-
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={() =>
-            setShowDeleteConfirm(false)
+        <IssueForm
+          project={project}
+          projectId={projectId}
+          taskId={taskId}
+          issue={issue}
+          canAssign={
+            taskId ? false : isOwner
           }
-          disabled={deleting}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
-        >
-          Cancel
-        </button>
+          members={
+            taskId
+              ? []
+              : project?.members || []
+          }
+          onSubmit={handleUpdateIssue}
+          onClose={() =>
+            setShowEditForm(false)
+          }
+        />
+      )}
 
-        <button
-          type="button"
-          onClick={handleDeleteIssue}
-          disabled={deleting}
-          className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {deleting ? "Deleting..." : "Delete Issue"}
-        </button>
-      </div>
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+
+            <h2 className="text-lg font-semibold text-white">
+              Delete Issue?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Are you sure you want to delete this
+              issue? This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowDeleteConfirm(false)
+                }
+                disabled={deleting}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteIssue}
+                disabled={deleting}
+                className="rounded-xl bg-red-500/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleting
+                  ? "Deleting..."
+                  : "Delete Issue"}
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
-</div>
   );
 }
 

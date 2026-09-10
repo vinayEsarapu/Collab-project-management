@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateProject from "./pages/Createprojects";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GuestRoute from "./pages/GuestRoute";
 import ProjectDetails from "./pages/Projectdetails";
 import Issues from "./pages/issues";
 import IssueDetails from "./pages/issueDetails";
@@ -48,15 +49,21 @@ function App() {
 
         <Route path="/" element={<Home />} />
 
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+        {/* =========================
+            GUEST-ONLY ROUTES
+        ========================= */}
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+        <Route element={<GuestRoute />}>
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+        </Route>
 
         {/* =========================
             PROTECTED ROUTES

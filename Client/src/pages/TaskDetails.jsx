@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import {
   getProjectById,
@@ -12,6 +16,7 @@ import { useAuth } from "../context/Authcontext.jsx";
 function TaskDetails() {
   const { id, taskId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { user, isLoading: isAuthLoading } = useAuth();
 
@@ -47,23 +52,66 @@ function TaskDetails() {
 
   const canEdit = isOwner || isAssignedMember;
 
+  /*
+   * ---------------------------------------------------------
+   * CONTEXTUAL BACK NAVIGATION
+   * ---------------------------------------------------------
+   *
+   * If this task was opened from Profile:
+   *
+   * Profile -> Project -> Task -> Back -> Profile
+   *
+   * Otherwise:
+   *
+   * Tasks -> Task -> Back -> Tasks
+   */
+  const handleBack = () => {
+    if (location.state?.from === "profile") {
+      navigate("/profile");
+      return;
+    }
+
+    navigate(`/projects/${id}/tasks`);
+  };
+
+  /*
+   * Preserve Profile navigation context when opening
+   * Task Issues, Comments, Activity, etc.
+   */
+  const getChildNavigationState = () => {
+    if (location.state?.from === "profile") {
+      return {
+        state: {
+          from: "profile",
+        },
+      };
+    }
+
+    return {};
+  };
+
   const loadTask = async () => {
     try {
       setIsLoading(true);
       setError("");
 
-      const [projectData, taskData] = await Promise.all([
-        getProjectById(id),
-        getTaskById(id, taskId),
-      ]);
+      const [projectData, taskData] =
+        await Promise.all([
+          getProjectById(id),
+          getTaskById(id, taskId),
+        ]);
 
       setProject(projectData);
       setTask(taskData);
 
       setTitle(taskData.title || "");
       setDescription(taskData.description || "");
-      setStatus(taskData.status || "Planning");
-      setPriority(taskData.priority || "Medium");
+      setStatus(
+        taskData.status || "Planning"
+      );
+      setPriority(
+        taskData.priority || "Medium"
+      );
 
       setAssignedTo(
         taskData.assignedTo?._id ||
@@ -91,13 +139,22 @@ function TaskDetails() {
     }
 
     loadTask();
-  }, [id, taskId, isAuthLoading, user]);
+  }, [
+    id,
+    taskId,
+    isAuthLoading,
+    user,
+  ]);
 
   const startEditing = () => {
     setTitle(task.title || "");
     setDescription(task.description || "");
-    setStatus(task.status || "Planning");
-    setPriority(task.priority || "Medium");
+    setStatus(
+      task.status || "Planning"
+    );
+    setPriority(
+      task.priority || "Medium"
+    );
 
     setAssignedTo(
       task.assignedTo?._id ||
@@ -113,8 +170,12 @@ function TaskDetails() {
   const cancelEditing = () => {
     setTitle(task.title || "");
     setDescription(task.description || "");
-    setStatus(task.status || "Planning");
-    setPriority(task.priority || "Medium");
+    setStatus(
+      task.status || "Planning"
+    );
+    setPriority(
+      task.priority || "Medium"
+    );
 
     setAssignedTo(
       task.assignedTo?._id ||
@@ -128,15 +189,20 @@ function TaskDetails() {
 
   const handleUpdate = async () => {
     const trimmedTitle = title.trim();
-    const trimmedDescription = description.trim();
+    const trimmedDescription =
+      description.trim();
 
     if (!trimmedTitle) {
-      setFormError("Task title is required.");
+      setFormError(
+        "Task title is required."
+      );
       return;
     }
 
     if (!trimmedDescription) {
-      setFormError("Task description is required.");
+      setFormError(
+        "Task description is required."
+      );
       return;
     }
 
@@ -145,30 +211,42 @@ function TaskDetails() {
       setFormError("");
       setSuccess("");
 
-      const updatedTask = await updateTask(
-        id,
-        taskId,
-        {
-          title: trimmedTitle,
-          description: trimmedDescription,
-          status,
-          priority,
+      const updatedTask =
+        await updateTask(
+          id,
+          taskId,
+          {
+            title: trimmedTitle,
+            description:
+              trimmedDescription,
+            status,
+            priority,
 
-          // Only project owner can change assignment
-          ...(isOwner
-            ? {
-                assignedTo: assignedTo || null,
-              }
-            : {}),
-        }
-      );
+            // Only project owner can
+            // change assignment
+            ...(isOwner
+              ? {
+                  assignedTo:
+                    assignedTo || null,
+                }
+              : {}),
+          }
+        );
 
       setTask(updatedTask);
 
       setTitle(updatedTask.title || "");
-      setDescription(updatedTask.description || "");
-      setStatus(updatedTask.status || "Planning");
-      setPriority(updatedTask.priority || "Medium");
+      setDescription(
+        updatedTask.description || ""
+      );
+      setStatus(
+        updatedTask.status ||
+          "Planning"
+      );
+      setPriority(
+        updatedTask.priority ||
+          "Medium"
+      );
 
       setAssignedTo(
         updatedTask.assignedTo?._id ||
@@ -177,7 +255,9 @@ function TaskDetails() {
       );
 
       setIsEditing(false);
-      setSuccess("Task updated successfully.");
+      setSuccess(
+        "Task updated successfully."
+      );
     } catch (error) {
       console.error(
         "Failed to update task:",
@@ -198,8 +278,14 @@ function TaskDetails() {
       return "Unassigned";
     }
 
-    if (typeof task.assignedTo === "object") {
-      return task.assignedTo.name || "Unknown user";
+    if (
+      typeof task.assignedTo ===
+      "object"
+    ) {
+      return (
+        task.assignedTo.name ||
+        "Unknown user"
+      );
     }
 
     return "Assigned user";
@@ -227,7 +313,11 @@ function TaskDetails() {
   /*
    * Error state
    */
-  if (error || !task || !project) {
+  if (
+    error ||
+    !task ||
+    !project
+  ) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8">
         <main className="mx-auto max-w-3xl">
@@ -237,17 +327,19 @@ function TaskDetails() {
             </p>
 
             <p className="mt-2 text-sm text-slate-400">
-              {error || "Task not found."}
+              {error ||
+                "Task not found."}
             </p>
 
             <button
               type="button"
-              onClick={() =>
-                navigate(`/projects/${id}/tasks`)
-              }
+              onClick={handleBack}
               className="mt-6 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
             >
-              Back to Tasks
+              {location.state?.from ===
+              "profile"
+                ? "Back to Profile"
+                : "Back to Tasks"}
             </button>
           </div>
         </main>
@@ -265,12 +357,14 @@ function TaskDetails() {
         {/* Back */}
         <button
           type="button"
-          onClick={() =>
-            navigate(`/projects/${id}/tasks`)
-          }
+          onClick={handleBack}
           className="mb-8 text-sm text-slate-400 transition-colors hover:text-white"
         >
-          ← Back to Tasks
+          ←{" "}
+          {location.state?.from ===
+          "profile"
+            ? "Back to Profile"
+            : "Back to Tasks"}
         </button>
 
         {/* Header */}
@@ -297,15 +391,16 @@ function TaskDetails() {
               </p>
             </div>
 
-            {canEdit && !isEditing && (
-              <button
-                type="button"
-                onClick={startEditing}
-                className="w-fit rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
-              >
-                Edit Task
-              </button>
-            )}
+            {canEdit &&
+              !isEditing && (
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="w-fit rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-400"
+                >
+                  Edit Task
+                </button>
+              )}
           </div>
         </section>
 
@@ -335,8 +430,12 @@ function TaskDetails() {
 
                 <button
                   type="button"
-                  onClick={cancelEditing}
-                  disabled={isUpdating}
+                  onClick={
+                    cancelEditing
+                  }
+                  disabled={
+                    isUpdating
+                  }
                   className="rounded-lg px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
                 >
                   ✕
@@ -365,9 +464,16 @@ function TaskDetails() {
                     id="taskTitle"
                     type="text"
                     value={title}
-                    onChange={(event) => {
-                      setTitle(event.target.value);
-                      setFormError("");
+                    onChange={(
+                      event
+                    ) => {
+                      setTitle(
+                        event.target
+                          .value
+                      );
+                      setFormError(
+                        ""
+                      );
                     }}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
                   />
@@ -384,10 +490,19 @@ function TaskDetails() {
 
                   <textarea
                     id="taskDescription"
-                    value={description}
-                    onChange={(event) => {
-                      setDescription(event.target.value);
-                      setFormError("");
+                    value={
+                      description
+                    }
+                    onChange={(
+                      event
+                    ) => {
+                      setDescription(
+                        event.target
+                          .value
+                      );
+                      setFormError(
+                        ""
+                      );
                     }}
                     rows={5}
                     className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-400/50"
@@ -409,8 +524,13 @@ function TaskDetails() {
                     <select
                       id="taskStatus"
                       value={status}
-                      onChange={(event) =>
-                        setStatus(event.target.value)
+                      onChange={(
+                        event
+                      ) =>
+                        setStatus(
+                          event.target
+                            .value
+                        )
                       }
                       className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
                     >
@@ -439,9 +559,16 @@ function TaskDetails() {
 
                     <select
                       id="taskPriority"
-                      value={priority}
-                      onChange={(event) =>
-                        setPriority(event.target.value)
+                      value={
+                        priority
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setPriority(
+                          event.target
+                            .value
+                        )
                       }
                       className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
                     >
@@ -476,9 +603,16 @@ function TaskDetails() {
 
                     <select
                       id="taskAssignee"
-                      value={assignedTo}
-                      onChange={(event) =>
-                        setAssignedTo(event.target.value)
+                      value={
+                        assignedTo
+                      }
+                      onChange={(
+                        event
+                      ) =>
+                        setAssignedTo(
+                          event.target
+                            .value
+                        )
                       }
                       className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400/50"
                     >
@@ -488,50 +622,73 @@ function TaskDetails() {
 
                       {[
                         project.owner,
-                        ...(project.members || []),
+                        ...(project.members ||
+                          []),
                       ]
                         .filter(Boolean)
                         .filter(
-                          (member, index, array) => {
-                            const memberId = (
-                              member._id || member
-                            ).toString();
+                          (
+                            member,
+                            index,
+                            array
+                          ) => {
+                            const memberId =
+                              (
+                                member._id ||
+                                member
+                              ).toString();
 
                             return (
                               array.findIndex(
-                                (item) =>
+                                (
+                                  item
+                                ) =>
                                   (
-                                    item._id || item
+                                    item._id ||
+                                    item
                                   ).toString() ===
                                   memberId
-                              ) === index
+                              ) ===
+                              index
                             );
                           }
                         )
-                        .map((member) => {
-                          const memberId = (
-                            member._id || member
-                          ).toString();
+                        .map(
+                          (
+                            member
+                          ) => {
+                            const memberId =
+                              (
+                                member._id ||
+                                member
+                              ).toString();
 
-                          return (
-                            <option
-                              key={memberId}
-                              value={memberId}
-                            >
-                              {member.name ||
-                                "Unknown user"}
+                            return (
+                              <option
+                                key={
+                                  memberId
+                                }
+                                value={
+                                  memberId
+                                }
+                              >
+                                {member.name ||
+                                  "Unknown user"}
 
-                              {memberId ===
-                              project.owner?._id?.toString()
-                                ? " (Owner)"
-                                : ""}
-                            </option>
-                          );
-                        })}
+                                {memberId ===
+                                project
+                                  .owner?._id?.toString()
+                                  ? " (Owner)"
+                                  : ""}
+                              </option>
+                            );
+                          }
+                        )}
                     </select>
 
                     <p className="mt-2 text-xs text-slate-500">
-                      Only the project owner can change
+                      Only the project
+                      owner can change
                       task assignment.
                     </p>
                   </div>
@@ -543,8 +700,12 @@ function TaskDetails() {
 
                 <button
                   type="button"
-                  onClick={cancelEditing}
-                  disabled={isUpdating}
+                  onClick={
+                    cancelEditing
+                  }
+                  disabled={
+                    isUpdating
+                  }
                   className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
                 >
                   Cancel
@@ -552,8 +713,12 @@ function TaskDetails() {
 
                 <button
                   type="button"
-                  onClick={handleUpdate}
-                  disabled={isUpdating}
+                  onClick={
+                    handleUpdate
+                  }
+                  disabled={
+                    isUpdating
+                  }
                   className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isUpdating
@@ -586,7 +751,8 @@ function TaskDetails() {
             </p>
 
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-              {task.description || "No description"}
+              {task.description ||
+                "No description"}
             </p>
           </div>
 
@@ -600,12 +766,18 @@ function TaskDetails() {
 
             <DetailItem
               label="Status"
-              value={task.status || "Planning"}
+              value={
+                task.status ||
+                "Planning"
+              }
             />
 
             <DetailItem
               label="Priority"
-              value={task.priority || "Medium"}
+              value={
+                task.priority ||
+                "Medium"
+              }
             />
 
           </div>
@@ -636,7 +808,8 @@ function TaskDetails() {
             type="button"
             onClick={() =>
               navigate(
-                `/projects/${id}/tasks/${taskId}/issues`
+                `/projects/${id}/tasks/${taskId}/issues`,
+                getChildNavigationState()
               )
             }
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
@@ -646,8 +819,8 @@ function TaskDetails() {
             </p>
 
             <p className="mt-2 text-sm text-slate-400">
-              View only the issues belonging to
-              this task.
+              View only the issues
+              belonging to this task.
             </p>
 
             <span className="mt-4 block text-sm text-indigo-300">
@@ -660,7 +833,8 @@ function TaskDetails() {
             type="button"
             onClick={() =>
               navigate(
-                `/projects/${id}/tasks/${taskId}/issues/new`
+                `/projects/${id}/tasks/${taskId}/issues/new`,
+                getChildNavigationState()
               )
             }
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
@@ -670,8 +844,8 @@ function TaskDetails() {
             </p>
 
             <p className="mt-2 text-sm text-slate-400">
-              Create an issue specifically for
-              this task.
+              Create an issue specifically
+              for this task.
             </p>
 
             <span className="mt-4 block text-sm text-indigo-300">
@@ -689,7 +863,8 @@ function TaskDetails() {
             type="button"
             onClick={() =>
               navigate(
-                `/projects/${id}/tasks/${taskId}/comments`
+                `/projects/${id}/tasks/${taskId}/comments`,
+                getChildNavigationState()
               )
             }
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
@@ -712,7 +887,8 @@ function TaskDetails() {
             type="button"
             onClick={() =>
               navigate(
-                `/projects/${id}/tasks/${taskId}/activity`
+                `/projects/${id}/tasks/${taskId}/activity`,
+                getChildNavigationState()
               )
             }
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
@@ -722,7 +898,8 @@ function TaskDetails() {
             </p>
 
             <p className="mt-2 text-sm text-slate-400">
-              View activity related to this task.
+              View activity related to
+              this task.
             </p>
 
             <span className="mt-4 block text-sm text-indigo-300">
@@ -737,7 +914,10 @@ function TaskDetails() {
   );
 }
 
-function DetailItem({ label, value }) {
+function DetailItem({
+  label,
+  value,
+}) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
 

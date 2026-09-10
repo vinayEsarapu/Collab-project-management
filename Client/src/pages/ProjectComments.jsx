@@ -408,7 +408,6 @@ useEffect(() => {
         Clear Filter
       </button>
     )}
-
   </div>
 </section>
 

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { useAuth } from "../context/Authcontext";
 import {
   getComments,
@@ -10,11 +14,16 @@ import {
 import { getProjectById } from "../services/projectservices";
 
 function Comments() {
-  const { id: projectId,   taskId,issueId } = useParams();
+  const {
+    id: projectId,
+    taskId,
+    issueId,
+  } = useParams();
+
+  const location = useLocation();
   const { user } = useAuth();
 
   const [comments, setComments] = useState([]);
-  //const [issue, setIssue] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,8 +31,9 @@ function Comments() {
   // Name filter
   const [name, setName] = useState("");
   const [commenterId, setCommenterId] = useState("");
-const [commenters, setCommenters] = useState([]);
-const [commentersLoading, setCommentersLoading] = useState(false);
+  const [commenters, setCommenters] = useState([]);
+  const [commentersLoading, setCommentersLoading] =
+    useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -38,7 +48,8 @@ const [commentersLoading, setCommentersLoading] = useState(false);
 
   // New comment
   const [commentText, setCommentText] = useState("");
-  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] =
+    useState(false);
 
   // Edit comment
   const [editingCommentId, setEditingCommentId] =
@@ -51,6 +62,80 @@ const [commentersLoading, setCommentersLoading] = useState(false);
   // Delete comment
   const [commentDeletingId, setCommentDeletingId] =
     useState(null);
+
+  // --------------------------------------------------
+  // Navigation state
+  // --------------------------------------------------
+
+  const cameFromProfile =
+    location.state?.from === "profile";
+
+  /*
+   * Preserve profile context when moving back to
+   * the issue/task page.
+   *
+   * Example:
+   *
+   * Profile
+   *   → Task
+   *   → Task Issues
+   *   → Issue
+   *   → Comments
+   *
+   * If we go back to Issue Details, Issue Details
+   * still knows that the original source was Profile.
+   */
+  const parentNavigationState = cameFromProfile
+    ? {
+        from: "profile",
+      }
+    : undefined;
+
+  // --------------------------------------------------
+  // Back navigation
+  // --------------------------------------------------
+
+  const getBackPath = () => {
+    /*
+     * Profile → ... → Comments
+     *
+     * When the user originally came from Profile,
+     * go directly back to Profile.
+     */
+    if (cameFromProfile) {
+      return "/profile";
+    }
+
+    /*
+     * Task-level issue comments
+     *
+     * Normal navigation:
+     * Task Issues → Issue Details → Comments
+     *
+     * So Back should return to Issue Details.
+     */
+    if (taskId && issueId) {
+      return `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`;
+    }
+
+    /*
+     * Task-level comments
+     *
+     * Normal navigation:
+     * Task → Comments
+     */
+    if (taskId) {
+      return `/projects/${projectId}/tasks/${taskId}`;
+    }
+
+    /*
+     * Project-level issue comments
+     *
+     * Normal navigation:
+     * Issue Details → Comments
+     */
+    return `/projects/${projectId}/issues/${issueId}`;
+  };
 
   // --------------------------------------------------
   // Check whether current user owns the comment
@@ -108,54 +193,59 @@ const [commentersLoading, setCommentersLoading] = useState(false);
     return created.toLocaleDateString();
   };
 
+  // --------------------------------------------------
+  // Fetch commenters
+  // --------------------------------------------------
 
   const fetchCommenters = async () => {
-  if (!projectId) {
-    return;
-  }
-
-  try {
-    setCommentersLoading(true);
-
-    const project = await getProjectById(projectId);
-
-    const users = [];
-
-    // Project owner
-    if (project?.owner?._id) {
-      users.push(project.owner);
+    if (!projectId) {
+      return;
     }
 
-    // Project members
-    if (Array.isArray(project?.members)) {
-      users.push(...project.members);
+    try {
+      setCommentersLoading(true);
+
+      const project = await getProjectById(projectId);
+
+      const users = [];
+
+      // Project owner
+      if (project?.owner?._id) {
+        users.push(project.owner);
+      }
+
+      // Project members
+      if (Array.isArray(project?.members)) {
+        users.push(...project.members);
+      }
+
+      // Remove duplicates
+      const uniqueUsers = Array.from(
+        new Map(
+          users.map((member) => [
+            member._id.toString(),
+            member,
+          ])
+        ).values()
+      );
+
+      // Sort alphabetically
+      uniqueUsers.sort((a, b) =>
+        (a.name || "").localeCompare(
+          b.name || ""
+        )
+      );
+
+      setCommenters(uniqueUsers);
+    } catch (error) {
+      console.error(
+        "Failed to load project commenters:",
+        error
+      );
+    } finally {
+      setCommentersLoading(false);
     }
-
-    // Remove duplicates
-    const uniqueUsers = Array.from(
-      new Map(
-        users.map((member) => [
-          member._id.toString(),
-          member,
-        ])
-      ).values()
-    );
-
-    // Sort alphabetically
-    uniqueUsers.sort((a, b) =>
-      (a.name || "").localeCompare(b.name || "")
-    );
-
-    setCommenters(uniqueUsers);
-  } catch (error) {
-    console.error(
-      "Failed to load project commenters:",
-      error
-    );
-  } finally {
-    setCommentersLoading(false);
-  }
-};
+  };
 
   // --------------------------------------------------
   // Fetch comments
@@ -171,8 +261,8 @@ const [commentersLoading, setCommentersLoading] = useState(false);
         page,
         10,
         name,
-         taskId,
-          commenterId
+        taskId,
+        commenterId
       );
 
       setComments(data.comments || []);
@@ -187,11 +277,6 @@ const [commentersLoading, setCommentersLoading] = useState(false);
           hasPreviousPage: false,
         }
       );
-
-      // Get issue information if backend returns it
-      // if (data.comments?.[0]?.issue) {
-      //   setIssue(data.comments[0].issue);
-      // }
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -203,51 +288,51 @@ const [commentersLoading, setCommentersLoading] = useState(false);
   };
 
   // --------------------------------------------------
-  // Fetch whenever page or name changes
+  // Effects
   // --------------------------------------------------
 
   useEffect(() => {
-  if (projectId) {
-    fetchCommenters();
-  }
-}, [projectId]);
+    if (projectId) {
+      fetchCommenters();
+    }
+  }, [projectId]);
 
-useEffect(() => {
-  if (taskId || issueId) {
-    fetchComments();
-  }
-}, [
-  taskId,
-  issueId,
-  page,
-  name,
-  commenterId,
-]);
+  useEffect(() => {
+    if (taskId || issueId) {
+      fetchComments();
+    }
+  }, [
+    taskId,
+    issueId,
+    page,
+    name,
+    commenterId,
+  ]);
+
   // --------------------------------------------------
-  // Name filter
+  // Commenter filter
   // --------------------------------------------------
 
   const handleCommenterChange = (event) => {
-  const selectedId = event.target.value;
+    const selectedId = event.target.value;
 
-  setCommenterId(selectedId);
+    setCommenterId(selectedId);
 
-  const selectedUser = commenters.find(
-    (member) =>
-      member._id?.toString() === selectedId
-  );
+    const selectedUser = commenters.find(
+      (member) =>
+        member._id?.toString() === selectedId
+    );
 
-  setName(selectedUser?.name || "");
+    setName(selectedUser?.name || "");
 
-  // Always start from page 1 after changing filter
-  setPage(1);
-};
+    setPage(1);
+  };
 
-const clearCommenterFilter = () => {
-  setCommenterId("");
-  setName("");
-  setPage(1);
-};
+  const clearCommenterFilter = () => {
+    setCommenterId("");
+    setName("");
+    setPage(1);
+  };
 
   // --------------------------------------------------
   // Add comment
@@ -267,17 +352,11 @@ const clearCommenterFilter = () => {
       await createComment(
         issueId,
         commentText,
-          taskId
+        taskId
       );
 
       setCommentText("");
 
-      /*
-       * Reload the current page from backend.
-       *
-       * This is important because pagination is controlled
-       * by the backend.
-       */
       await fetchComments();
     } catch (error) {
       setError(
@@ -340,10 +419,6 @@ const clearCommenterFilter = () => {
 
       await deleteComment(commentId);
 
-      /*
-       * Reload from backend rather than manually removing
-       * the item. This keeps pagination/count correct.
-       */
       await fetchComments();
     } catch (error) {
       setError(
@@ -363,7 +438,6 @@ const clearCommenterFilter = () => {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
-
           <div className="h-5 w-32 animate-pulse rounded bg-white/10" />
 
           <div className="mt-6 h-10 w-2/3 animate-pulse rounded bg-white/10" />
@@ -374,7 +448,6 @@ const clearCommenterFilter = () => {
             <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
             <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
           </div>
-
         </div>
       </div>
     );
@@ -387,37 +460,26 @@ const clearCommenterFilter = () => {
         {/* Back */}
 
         <Link
-  to={
-    taskId && issueId
-      ? `/projects/${projectId}/tasks/${taskId}/issues/${issueId}`
-      : taskId
-      ? `/projects/${projectId}/tasks/${taskId}`
-      : `/projects/${projectId}/issues/${issueId}`
-  }
-  
->
-
-  ← Back
-</Link>
+          to={getBackPath()}
+          state={
+            cameFromProfile
+              ? parentNavigationState
+              : undefined
+          }
+          className="inline-flex items-center text-sm font-medium text-slate-400 transition hover:text-white"
+        >
+          ← Back
+        </Link>
 
         {/* Header */}
+
         <div className="mt-6">
           <p className="text-xs font-medium uppercase tracking-wider text-indigo-400">
-           <h1>
-  {taskId && issueId
-    ? "Task Issue Comments"
-    : taskId
-    ? "Task Comments"
-    : "Issue Comments"}
-</h1>
-
-<p>
-  {taskId && issueId
-    ? "View and discuss comments related to this task issue."
-    : taskId
-    ? "View and discuss comments related to this task."
-    : "View and discuss comments related to this issue."}
-</p>
+            {taskId && issueId
+              ? "Task Issue Comments"
+              : taskId
+              ? "Task Comments"
+              : "Issue Comments"}
           </p>
 
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-4xl">
@@ -425,74 +487,56 @@ const clearCommenterFilter = () => {
           </h1>
 
           <p className="mt-2 text-sm text-slate-400">
-            View and discuss comments on this issue.
+            {taskId && issueId
+              ? "View and discuss comments related to this task issue."
+              : taskId
+              ? "View and discuss comments related to this task."
+              : "View and discuss comments related to this issue."}
           </p>
         </div>
 
         {/* Filter */}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
 
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
 
             <div className="flex-1">
-              <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Filter by commenter name
+              <label
+                htmlFor="commenter-filter"
+                className="text-xs font-medium uppercase tracking-wide text-slate-500"
+              >
+                Filter by commenter
               </label>
 
-              {/* Filter */}
-<section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm">
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <select
+                id="commenter-filter"
+                value={commenterId}
+                onChange={handleCommenterChange}
+                disabled={commentersLoading}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {commentersLoading
+                    ? "Loading commenters..."
+                    : "All commenters"}
+                </option>
 
-    <div className="flex-1">
-      <label
-        htmlFor="commenter-filter"
-        className="text-xs font-medium uppercase tracking-wide text-slate-500"
-      >
-        Filter by commenter
-      </label>
-
-      <select
-        id="commenter-filter"
-        value={commenterId}
-        onChange={handleCommenterChange}
-        disabled={commentersLoading}
-        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <option value="">
-          {commentersLoading
-            ? "Loading commenters..."
-            : "All commenters"}
-        </option>
-
-        {commenters.map((member) => (
-          <option
-            key={member._id}
-            value={member._id}
-          >
-            {member.name || "Unknown User"}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    {commenterId && (
-      <button
-        type="button"
-        onClick={clearCommenterFilter}
-        className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-      >
-        Clear Filter
-      </button>
-    )}
-
-  </div>
-</section>
+                {commenters.map((member) => (
+                  <option
+                    key={member._id}
+                    value={member._id}
+                  >
+                    {member.name ||
+                      "Unknown User"}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {name && (
+            {commenterId && (
               <button
                 type="button"
-                onClick={clearNameFilter}
+                onClick={clearCommenterFilter}
                 className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
               >
                 Clear Filter
@@ -503,6 +547,7 @@ const clearCommenterFilter = () => {
         </section>
 
         {/* Error */}
+
         {error && (
           <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
@@ -510,9 +555,9 @@ const clearCommenterFilter = () => {
         )}
 
         {/* Summary */}
+
         {!error && (
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
             <p className="text-sm text-slate-400">
               {pagination.totalComments}{" "}
               {pagination.totalComments === 1
@@ -520,29 +565,28 @@ const clearCommenterFilter = () => {
                 : "comments"}
             </p>
 
-           {commenterId && name && (
-  <p className="text-xs text-indigo-400">
-    Showing comments by "{name}"
-  </p>
-)}
-
+            {commenterId && name && (
+              <p className="text-xs text-indigo-400">
+                Showing comments by "{name}"
+              </p>
+            )}
           </div>
         )}
 
-        {/* Comments */}
+        {/* Empty comments */}
+
         {!loading &&
           !error &&
           comments.length === 0 && (
             <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
-
               <h3 className="text-lg font-semibold">
                 No comments found
               </h3>
 
               <p className="mt-2 text-sm text-slate-500">
-               {commenterId && name
-  ? `No comments found by "${name}".`
-  : "No comments have been added yet."}
+                {commenterId && name
+                  ? `No comments found by "${name}".`
+                  : "No comments have been added yet."}
               </p>
 
               {commenterId && (
@@ -554,23 +598,22 @@ const clearCommenterFilter = () => {
                   Clear Filter
                 </button>
               )}
-
             </div>
           )}
 
         {/* Comment list */}
+
         {!error && comments.length > 0 && (
           <div className="mt-5 space-y-4">
-
             {comments.map((comment) => (
               <div
                 key={comment._id}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
               >
-
                 <div className="flex gap-4">
 
                   {/* Avatar */}
+
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-indigo-500/20 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
                     {comment.createdBy?.name
                       ?.charAt(0)
@@ -578,11 +621,12 @@ const clearCommenterFilter = () => {
                   </div>
 
                   {/* Content */}
+
                   <div className="min-w-0 flex-1">
 
                     {/* Header */}
-                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
 
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-sm text-slate-300">
                         <span className="font-semibold text-white">
                           {comment.createdBy?.name ||
@@ -596,14 +640,13 @@ const clearCommenterFilter = () => {
                           comment.createdAt
                         )}
                       </p>
-
                     </div>
 
                     {/* Edit mode */}
+
                     {editingCommentId ===
                     comment._id ? (
                       <div className="mt-3">
-
                         <textarea
                           value={
                             editingCommentText
@@ -619,7 +662,6 @@ const clearCommenterFilter = () => {
                         />
 
                         <div className="mt-2 flex flex-wrap gap-2">
-
                           <button
                             type="button"
                             onClick={() =>
@@ -655,13 +697,12 @@ const clearCommenterFilter = () => {
                           >
                             Cancel
                           </button>
-
                         </div>
-
                       </div>
                     ) : (
                       <>
                         {/* Comment text */}
+
                         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
                           <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-300">
                             {comment.content}
@@ -669,11 +710,11 @@ const clearCommenterFilter = () => {
                         </div>
 
                         {/* Actions */}
+
                         {isCommentAuthor(
                           comment
                         ) && (
                           <div className="mt-2 flex flex-wrap gap-3">
-
                             <button
                               type="button"
                               onClick={() => {
@@ -707,7 +748,6 @@ const clearCommenterFilter = () => {
                                 ? "Deleting..."
                                 : "Delete"}
                             </button>
-
                           </div>
                         )}
                       </>
@@ -715,26 +755,23 @@ const clearCommenterFilter = () => {
 
                   </div>
                 </div>
-
               </div>
             ))}
-
           </div>
         )}
 
         {/* Pagination */}
+
         {!loading &&
           !error &&
           pagination.totalPages > 1 && (
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
               <p className="text-xs text-slate-500">
                 Page {pagination.currentPage} of{" "}
                 {pagination.totalPages}
               </p>
 
               <div className="flex gap-2">
-
                 <button
                   type="button"
                   disabled={
@@ -764,14 +801,13 @@ const clearCommenterFilter = () => {
                 >
                   Next →
                 </button>
-
               </div>
             </div>
           )}
 
         {/* Add comment */}
-        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-6">
 
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
             Add a comment
           </h2>
@@ -780,7 +816,6 @@ const clearCommenterFilter = () => {
             onSubmit={handleAddComment}
             className="mt-4"
           >
-
             <textarea
               value={commentText}
               onChange={(event) =>
@@ -795,7 +830,6 @@ const clearCommenterFilter = () => {
             />
 
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
               <p className="text-xs text-slate-600">
                 {commentText.length}/1000
                 characters
@@ -813,13 +847,9 @@ const clearCommenterFilter = () => {
                   ? "Posting..."
                   : "Post Comment"}
               </button>
-
             </div>
-
           </form>
-
         </section>
-
       </div>
     </div>
   );

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import IssueCard from "../components/issues/IssueCard";
 import IssueForm from "../components/issues/issueform";
 import {
@@ -19,6 +24,7 @@ function TaskIssues() {
   } = useParams();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [project, setProject] = useState(null);
   const [task, setTask] = useState(null);
@@ -27,11 +33,20 @@ function TaskIssues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [showForm, setShowForm] = useState(issueId === "new");
+  const [showForm, setShowForm] =
+    useState(issueId === "new");
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [statusFilter, setStatusFilter] =
+    useState("All");
+  const [priorityFilter, setPriorityFilter] =
+    useState("All");
+
+  /*
+   * --------------------------------------------------
+   * Fetch Project, Task and Issues
+   * --------------------------------------------------
+   */
 
   const fetchData = async () => {
     try {
@@ -67,18 +82,55 @@ function TaskIssues() {
     }
   }, [projectId, taskId]);
 
+  /*
+   * --------------------------------------------------
+   * Show / Hide Create Issue Form
+   * --------------------------------------------------
+   */
+
   useEffect(() => {
     setShowForm(issueId === "new");
   }, [issueId]);
+
+  /*
+   * --------------------------------------------------
+   * Contextual Navigation
+   *
+   * If this TaskIssues page was opened from a Task
+   * page that originally came from Profile, preserve
+   * that information when navigating back to Task.
+   * --------------------------------------------------
+   */
+
+  const getParentNavigationState = () => {
+    if (location.state?.from === "profile") {
+      return {
+        state: {
+          from: "profile",
+        },
+      };
+    }
+
+    return {};
+  };
+
+  /*
+   * --------------------------------------------------
+   * Create Issue
+   * --------------------------------------------------
+   */
 
   const handleCreateIssue = async (issueData) => {
     try {
       setError("");
 
       // IMPORTANT:
-      // Do NOT send assignedTo or referredTo for task-level issues.
-      // The backend will automatically assign the issue
+      // Do NOT send assignedTo or referredTo for
+      // task-level issues.
+      //
+      // The backend automatically assigns the issue
       // to the task's assigned user.
+
       await createIssue({
         ...issueData,
         project: projectId,
@@ -87,10 +139,13 @@ function TaskIssues() {
 
       setShowForm(false);
 
-      // Remove /new from the URL after successful creation.
+      // Remove /new from the URL after creation.
       navigate(
         `/projects/${projectId}/tasks/${taskId}/issues`,
-        { replace: true }
+        {
+          replace: true,
+          ...getParentNavigationState(),
+        }
       );
 
       await fetchData();
@@ -105,16 +160,31 @@ function TaskIssues() {
     }
   };
 
+  /*
+   * --------------------------------------------------
+   * Close Create Issue Form
+   * --------------------------------------------------
+   */
+
   const handleClose = () => {
     setShowForm(false);
 
     if (issueId === "new") {
       navigate(
         `/projects/${projectId}/tasks/${taskId}/issues`,
-        { replace: true }
+        {
+          replace: true,
+          ...getParentNavigationState(),
+        }
       );
     }
   };
+
+  /*
+   * --------------------------------------------------
+   * Filter Issues
+   * --------------------------------------------------
+   */
 
   const filteredIssues = useMemo(() => {
     return issues.filter((issue) => {
@@ -149,11 +219,18 @@ function TaskIssues() {
     priorityFilter,
   ]);
 
+  /*
+   * --------------------------------------------------
+   * Loading State
+   * --------------------------------------------------
+   */
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 px-4 py-8">
         <div className="mx-auto max-w-7xl animate-pulse">
           <div className="h-6 w-40 rounded bg-white/10" />
+
           <div className="mt-4 h-10 w-72 rounded bg-white/10" />
 
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -169,17 +246,32 @@ function TaskIssues() {
     );
   }
 
+  /*
+   * --------------------------------------------------
+   * Main UI
+   * --------------------------------------------------
+   */
+
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
 
+        {/* Back to Task */}
         <Link
           to={`/projects/${projectId}/tasks/${taskId}`}
+          state={
+            location.state?.from === "profile"
+              ? {
+                  from: "profile",
+                }
+              : undefined
+          }
           className="text-sm text-slate-400 hover:text-white"
         >
           ← Back to Task
         </Link>
 
+        {/* Header */}
         <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-indigo-400">
@@ -219,9 +311,11 @@ function TaskIssues() {
           </div>
         </div>
 
+        {/* Filters */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_180px]">
 
+            {/* Search */}
             <input
               type="text"
               placeholder="Search task issues..."
@@ -232,44 +326,78 @@ function TaskIssues() {
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600"
             />
 
+            {/* Status */}
             <select
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value)
+                setStatusFilter(
+                  event.target.value
+                )
               }
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none"
             >
-              <option value="All">All Status</option>
-              <option value="Open">Open</option>
+              <option value="All">
+                All Status
+              </option>
+
+              <option value="Open">
+                Open
+              </option>
+
               <option value="In Progress">
                 In Progress
               </option>
-              <option value="Resolved">Resolved</option>
-              <option value="Closed">Closed</option>
+
+              <option value="Resolved">
+                Resolved
+              </option>
+
+              <option value="Closed">
+                Closed
+              </option>
             </select>
 
+            {/* Priority */}
             <select
               value={priorityFilter}
               onChange={(event) =>
-                setPriorityFilter(event.target.value)
+                setPriorityFilter(
+                  event.target.value
+                )
               }
               className="rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300 outline-none"
             >
-              <option value="All">All Priority</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Critical">Critical</option>
+              <option value="All">
+                All Priority
+              </option>
+
+              <option value="Low">
+                Low
+              </option>
+
+              <option value="Medium">
+                Medium
+              </option>
+
+              <option value="High">
+                High
+              </option>
+
+              <option value="Critical">
+                Critical
+              </option>
             </select>
           </div>
         </div>
 
+        {/* Error */}
         {error && (
           <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
+        {/* Issue Count */}
         <div className="mt-6">
           <p className="text-sm text-slate-400">
             {filteredIssues.length}{" "}
@@ -279,6 +407,7 @@ function TaskIssues() {
           </p>
         </div>
 
+        {/* Empty State */}
         {filteredIssues.length === 0 && (
           <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
             <h3 className="text-lg font-semibold">
@@ -291,7 +420,9 @@ function TaskIssues() {
             </p>
 
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() =>
+                setShowForm(true)
+              }
               className="mt-5 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold hover:bg-indigo-400"
             >
               Create Issue
@@ -299,6 +430,7 @@ function TaskIssues() {
           </div>
         )}
 
+        {/* Issues */}
         {filteredIssues.length > 0 && (
           <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-0 lg:grid-cols-2">
             {filteredIssues.map((issue) => (
@@ -313,6 +445,7 @@ function TaskIssues() {
         )}
       </div>
 
+      {/* Create Issue Form */}
       {showForm && (
         <IssueForm
           project={project}

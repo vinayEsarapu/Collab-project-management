@@ -4,14 +4,11 @@ import { getProjects } from "../services/projectservices";
 
 function Projects() {
   const navigate = useNavigate();
-
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-
   const loadProjects = async () => {
     try {
       setIsLoading(true);

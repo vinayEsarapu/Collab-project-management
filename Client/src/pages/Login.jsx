@@ -3,7 +3,6 @@ import { loginUser } from "../services/authService";
 import { useAuth } from "../context/Authcontext";
 import { NavLink, useNavigate } from "react-router-dom";
 
-
 function Login() {
   const navigate = useNavigate();
 
@@ -39,7 +38,6 @@ function Login() {
 
       login(user, accessToken);
 
-      // Existing login flow — keep this
       navigate("/dashboard");
     } catch (error) {
       setError(
@@ -71,8 +69,6 @@ function Login() {
         <div className="w-full max-w-md">
           {/* Heading */}
           <div className="mb-8 text-center">
-            
-
             <h1 className="text-3xl font-bold tracking-tight text-white">
               Welcome back
             </h1>
@@ -118,38 +114,39 @@ function Login() {
               </div>
 
               {/* Password */}
-              {/* Password */}
-<div>
-  <label
-    htmlFor="password"
-    className="mb-2 block text-sm font-medium text-slate-200"
-  >
-    Password
-  </label>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="mb-2 block text-sm font-medium text-slate-200"
+                >
+                  Password
+                </label>
 
-  <div className="relative">
-    <input
-      id="password"
-      type={showPassword ? "text" : "password"}
-      name="password"
-      value={formData.password}
-      onChange={handleChange}
-      placeholder="Create a password"
-      autoComplete="new-password"
-      required
-      className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 pr-12 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-white/30 focus:ring-2 focus:ring-white/10"
-    />
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Create a password"
+                    autoComplete="new-password"
+                    required
+                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 pr-12 text-sm text-white outline-none transition-all duration-200 placeholder:text-slate-600 focus:border-white/30 focus:ring-2 focus:ring-white/10"
+                  />
 
-    <button
-  type="button"
-  onClick={() => setShowPassword((prev) => !prev)}
-  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition-colors duration-200 hover:text-slate-200"
-  aria-label={showPassword ? "Hide password" : "Show password"}
->
-  👁️
-</button>
-  </div>
-</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition-colors duration-200 hover:text-slate-200"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    👁️
+                  </button>
+                </div>
+              </div>
 
               {/* Submit */}
               <button
@@ -176,7 +173,7 @@ function Login() {
           </div>
 
           {/* Back to home */}
-          <div className="absolute top-20 left-10">
+          <div className="absolute left-10 top-20">
             <NavLink
               to="/"
               className="text-sm text-slate-500 transition-colors duration-200 hover:text-slate-300"
