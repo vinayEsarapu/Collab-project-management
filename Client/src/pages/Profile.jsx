@@ -74,27 +74,30 @@ const Profile = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  /* =======================================
+     CHANGE EMAIL
+  ======================================= */
+
   const [showChangeEmail, setShowChangeEmail] = useState(false);
-const [currentPassword, setCurrentPassword] = useState("");
-const [newEmail, setNewEmail] = useState("");
-const [changeEmailLoading, setChangeEmailLoading] = useState(false);
-const [changeEmailMessage, setChangeEmailMessage] = useState("");
-const [changeEmailError, setChangeEmailError] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [changeEmailLoading, setChangeEmailLoading] = useState(false);
+  const [changeEmailMessage, setChangeEmailMessage] = useState("");
+  const [changeEmailError, setChangeEmailError] = useState("");
 
   /* =======================================
-   MY TASKS
-======================================= */
+     MY TASKS
+  ======================================= */
 
-const [tasksPage, setTasksPage] = useState(1);
+  const [tasksPage, setTasksPage] = useState(1);
 
-const TASKS_PER_PAGE = 6;
+  const TASKS_PER_PAGE = 6;
 
   /* =======================================
      MY PROJECTS
   ======================================= */
 
-  const [projectsPage, setProjectsPage] =
-    useState(1);
+  const [projectsPage, setProjectsPage] = useState(1);
 
   const PROJECTS_PER_PAGE = 6;
 
@@ -107,8 +110,6 @@ const TASKS_PER_PAGE = 6;
     setAssignedProjectIssuesPage,
   ] = useState(1);
 
- 
-
   const ASSIGNED_PROJECT_ISSUES_PER_PAGE = 6;
 
   /* =======================================
@@ -120,8 +121,6 @@ const TASKS_PER_PAGE = 6;
     setReferredProjectIssuesPage,
   ] = useState(1);
 
- 
-
   const REFERRED_PROJECT_ISSUES_PER_PAGE = 6;
 
   /* =======================================
@@ -132,8 +131,6 @@ const TASKS_PER_PAGE = 6;
     assignedTaskIssuesPage,
     setAssignedTaskIssuesPage,
   ] = useState(1);
-
- 
 
   const ASSIGNED_TASK_ISSUES_PER_PAGE = 6;
 
@@ -155,10 +152,7 @@ const TASKS_PER_PAGE = 6;
 
       setProfile(data);
     } catch (err) {
-      console.error(
-        "Failed to load profile:",
-        err
-      );
+      console.error("Failed to load profile:", err);
 
       setError(
         err?.response?.data?.message ||
@@ -193,29 +187,28 @@ const TASKS_PER_PAGE = 6;
   const assignedTaskIssues =
     profile?.assignedTaskIssues || [];
 
+  /* =======================================
+     GLOBAL PROJECT FILTER
+  ======================================= */
 
-    /* =======================================
-   GLOBAL PROJECT FILTER
-======================================= */
-
-const [projectFilter, setProjectFilter] =
-  useState("All");
+  const [projectFilter, setProjectFilter] =
+    useState("All");
 
   /* =======================================
      MY TASKS - FILTER
   ======================================= */
 
- const filteredTasks = useMemo(() => {
-  if (projectFilter === "All") {
-    return tasks;
-  }
+  const filteredTasks = useMemo(() => {
+    if (projectFilter === "All") {
+      return tasks;
+    }
 
-  return tasks.filter(
-    (task) =>
-      String(task.projectId) ===
-      String(projectFilter)
-  );
-}, [tasks, projectFilter]);
+    return tasks.filter(
+      (task) =>
+        String(task.projectId) ===
+        String(projectFilter)
+    );
+  }, [tasks, projectFilter]);
 
   const totalTaskPages = Math.ceil(
     filteredTasks.length / TASKS_PER_PAGE
@@ -235,8 +228,7 @@ const [projectFilter, setProjectFilter] =
   );
 
   const paginatedProjects = projects.slice(
-    (projectsPage - 1) *
-      PROJECTS_PER_PAGE,
+    (projectsPage - 1) * PROJECTS_PER_PAGE,
     projectsPage * PROJECTS_PER_PAGE
   );
 
@@ -246,20 +238,20 @@ const [projectFilter, setProjectFilter] =
   ======================================= */
 
   const filteredAssignedProjectIssues =
-  useMemo(() => {
-    if (projectFilter === "All") {
-      return assignedProjectIssues;
-    }
+    useMemo(() => {
+      if (projectFilter === "All") {
+        return assignedProjectIssues;
+      }
 
-    return assignedProjectIssues.filter(
-      (issue) =>
-        String(issue.projectId) ===
-        String(projectFilter)
-    );
-  }, [
-    assignedProjectIssues,
-    projectFilter,
-  ]); 
+      return assignedProjectIssues.filter(
+        (issue) =>
+          String(issue.projectId) ===
+          String(projectFilter)
+      );
+    }, [
+      assignedProjectIssues,
+      projectFilter,
+    ]);
 
   const totalAssignedProjectIssuePages =
     Math.ceil(
@@ -279,16 +271,22 @@ const [projectFilter, setProjectFilter] =
      REFERRED PROJECT ISSUES
      FILTER + PAGINATION
   ======================================= */
-const filteredReferredProjectIssues = useMemo(() => {
-  if (projectFilter === "All") {
-    return referredProjectIssues;
-  }
 
-  return referredProjectIssues.filter(
-    (issue) => String(issue.projectId) === String(projectFilter)
-  );
-}, [referredProjectIssues, projectFilter]);
-  
+  const filteredReferredProjectIssues =
+    useMemo(() => {
+      if (projectFilter === "All") {
+        return referredProjectIssues;
+      }
+
+      return referredProjectIssues.filter(
+        (issue) =>
+          String(issue.projectId) ===
+          String(projectFilter)
+      );
+    }, [
+      referredProjectIssues,
+      projectFilter,
+    ]);
 
   const totalReferredProjectIssuePages =
     Math.ceil(
@@ -309,21 +307,21 @@ const filteredReferredProjectIssues = useMemo(() => {
      FILTER + PAGINATION
   ======================================= */
 
- const filteredAssignedTaskIssues =
-  useMemo(() => {
-    if (projectFilter === "All") {
-      return assignedTaskIssues;
-    }
+  const filteredAssignedTaskIssues =
+    useMemo(() => {
+      if (projectFilter === "All") {
+        return assignedTaskIssues;
+      }
 
-    return assignedTaskIssues.filter(
-      (issue) =>
-        String(issue.projectId) ===
-        String(projectFilter)
-    );
-  }, [
-    assignedTaskIssues,
-    projectFilter,
-  ]);
+      return assignedTaskIssues.filter(
+        (issue) =>
+          String(issue.projectId) ===
+          String(projectFilter)
+      );
+    }, [
+      assignedTaskIssues,
+      projectFilter,
+    ]);
 
   const totalAssignedTaskIssuePages =
     Math.ceil(
@@ -344,11 +342,12 @@ const filteredReferredProjectIssues = useMemo(() => {
   ======================================= */
 
   useEffect(() => {
-  setTasksPage(1);
-  setAssignedProjectIssuesPage(1);
-  setReferredProjectIssuesPage(1);
-  setAssignedTaskIssuesPage(1);
-}, [projectFilter]);
+    setTasksPage(1);
+    setAssignedProjectIssuesPage(1);
+    setReferredProjectIssuesPage(1);
+    setAssignedTaskIssuesPage(1);
+  }, [projectFilter]);
+
   /* =======================================
      KEEP PROJECT PAGINATION VALID
   ======================================= */
@@ -530,52 +529,78 @@ const filteredReferredProjectIssues = useMemo(() => {
     );
   };
 
+  /* =======================================
+     CHANGE EMAIL
+  ======================================= */
 
   const handleChangeEmail = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  setChangeEmailMessage("");
-  setChangeEmailError("");
+    setChangeEmailMessage("");
+    setChangeEmailError("");
 
-  if (!currentPassword.trim()) {
-    setChangeEmailError("Please enter your current password");
-    return;
-  }
+    if (!currentPassword.trim()) {
+      setChangeEmailError(
+        "Please enter your current password"
+      );
+      return;
+    }
 
-  if (!newEmail.trim()) {
-    setChangeEmailError("Please enter your new email address");
-    return;
-  }
+    if (!newEmail.trim()) {
+      setChangeEmailError(
+        "Please enter your new email address"
+      );
+      return;
+    }
 
-  if (!newEmail.includes("@")) {
-    setChangeEmailError("Please enter a valid email address");
-    return;
-  }
+    if (!newEmail.includes("@")) {
+      setChangeEmailError(
+        "Please enter a valid email address"
+      );
+      return;
+    }
 
-  try {
-    setChangeEmailLoading(true);
+    try {
+      setChangeEmailLoading(true);
 
-    const response = await changeEmail(
-      currentPassword,
-      newEmail.trim()
-    );
+      const response = await changeEmail(
+        currentPassword,
+        newEmail.trim()
+      );
 
-    setChangeEmailMessage(
-      response.message ||
-        "Verification email sent to your new email address."
-    );
+      setChangeEmailMessage(
+        response.message ||
+          "Verification email sent to your new email address."
+      );
 
+      setCurrentPassword("");
+      setNewEmail("");
+      setShowChangeEmail(false);
+    } catch (error) {
+      setChangeEmailError(
+        error.response?.data?.message ||
+          "Unable to change email. Please try again later."
+      );
+    } finally {
+      setChangeEmailLoading(false);
+    }
+  };
+
+  /* =======================================
+     CLOSE CHANGE EMAIL MODAL
+  ======================================= */
+
+  const handleCloseChangeEmail = () => {
+    if (changeEmailLoading) {
+      return;
+    }
+
+    setShowChangeEmail(false);
     setCurrentPassword("");
     setNewEmail("");
-  } catch (error) {
-    setChangeEmailError(
-      error.response?.data?.message ||
-        "Unable to change email. Please try again later."
-    );
-  } finally {
-    setChangeEmailLoading(false);
-  }
-};
+    setChangeEmailError("");
+    setChangeEmailMessage("");
+  };
 
   /* =======================================
      LOADING
@@ -710,152 +735,47 @@ const filteredReferredProjectIssues = useMemo(() => {
           </div>
         </section>
 
+        {/* =====================================
+            CHANGE EMAIL
+        ===================================== */}
 
-       {/* =====================================
-    CHANGE EMAIL
-===================================== */}
+        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
 
-<section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-indigo-300" />
 
-    <div>
-      <h2 className="text-lg font-semibold text-slate-100">
-        Email Address
-      </h2>
+                <h2 className="text-lg font-semibold text-slate-100">
+                  Email Address
+                </h2>
+              </div>
 
-      <p className="mt-1 text-sm text-slate-400">
-        Change the email address associated with your account.
-      </p>
-    </div>
+              <p className="mt-1 text-sm text-slate-400">
+                Change the email address associated with your account.
+              </p>
 
-    <button
-      type="button"
-      onClick={() => {
-        setShowChangeEmail((previous) => !previous);
-        setChangeEmailError("");
-        setChangeEmailMessage("");
-      }}
-      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
-    >
-      {showChangeEmail ? "Cancel" : "Change Email"}
-    </button>
+              <p className="mt-2 break-all text-sm font-medium text-slate-200">
+                {user?.email || "No email"}
+              </p>
+            </div>
 
-  </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowChangeEmail(true);
+                setChangeEmailError("");
+                setChangeEmailMessage("");
+              }}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Change Email
+            </button>
 
-  {showChangeEmail && (
-    <form
-      onSubmit={handleChangeEmail}
-      className="mt-6 space-y-5 border-t border-white/10 pt-5"
-    >
+          </div>
 
-      {/* ERROR */}
-
-      {changeEmailError && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          {changeEmailError}
-        </div>
-      )}
-
-      {/* SUCCESS */}
-
-      {changeEmailMessage && (
-        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
-          {changeEmailMessage}
-        </div>
-      )}
-
-      {/* CURRENT PASSWORD */}
-
-      <div>
-        <label
-          htmlFor="currentPassword"
-          className="mb-2 block text-sm font-medium text-slate-300"
-        >
-          Current Password
-        </label>
-
-        <input
-          id="currentPassword"
-          type="password"
-          value={currentPassword}
-          onChange={(event) =>
-            setCurrentPassword(event.target.value)
-          }
-          placeholder="Enter your current password"
-          autoComplete="current-password"
-          disabled={changeEmailLoading}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60"
-        />
-      </div>
-
-      {/* NEW EMAIL */}
-
-      <div>
-        <label
-          htmlFor="newEmail"
-          className="mb-2 block text-sm font-medium text-slate-300"
-        >
-          New Email Address
-        </label>
-
-        <input
-          id="newEmail"
-          type="email"
-          value={newEmail}
-          onChange={(event) =>
-            setNewEmail(event.target.value)
-          }
-          placeholder="Enter your new email address"
-          autoComplete="email"
-          disabled={changeEmailLoading}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60"
-        />
-      </div>
-
-      {/* INFORMATION */}
-
-      <div className="rounded-xl border border-indigo-400/10 bg-indigo-400/5 px-4 py-3 text-sm text-slate-400">
-        A verification link will be sent to your new email address.
-        Your email will only change after you verify the link.
-        The verification link expires after 15 minutes.
-      </div>
-
-      {/* ACTIONS */}
-
-      <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
-
-        <button
-          type="button"
-          onClick={() => {
-            setShowChangeEmail(false);
-            setCurrentPassword("");
-            setNewEmail("");
-            setChangeEmailError("");
-            setChangeEmailMessage("");
-          }}
-          disabled={changeEmailLoading}
-          className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Cancel
-        </button>
-
-        <button
-          type="submit"
-          disabled={changeEmailLoading}
-          className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {changeEmailLoading
-            ? "Sending..."
-            : "Send Verification Email"}
-        </button>
-
-      </div>
-
-    </form>
-  )}
-
-</section>
+        </section>
 
         {/* =====================================
             SUMMARY
@@ -985,16 +905,16 @@ const filteredReferredProjectIssues = useMemo(() => {
         </ProfileSection>
 
         {/* =====================================
-    GLOBAL PROJECT FILTER
-===================================== */}
+            GLOBAL PROJECT FILTER
+        ===================================== */}
 
-<div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-  <FilterBar
-    value={projectFilter}
-    onChange={setProjectFilter}
-    projects={projects}
-  />
-</div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+          <FilterBar
+            value={projectFilter}
+            onChange={setProjectFilter}
+            projects={projects}
+          />
+        </div>
 
         {/* =====================================
             MY TASKS
@@ -1005,7 +925,6 @@ const filteredReferredProjectIssues = useMemo(() => {
           description="Tasks currently assigned to you."
           icon={ListTodo}
         >
-         
 
           {filteredTasks.length === 0 ? (
             <EmptyState
@@ -1101,9 +1020,8 @@ const filteredReferredProjectIssues = useMemo(() => {
           description="Project-level issues currently assigned to you."
           icon={CircleAlert}
         >
-         
-          {filteredAssignedProjectIssues.length ===
-          0 ? (
+
+          {filteredAssignedProjectIssues.length === 0 ? (
             <EmptyState
               message={
                 assignedProjectIssues.length === 0
@@ -1132,8 +1050,7 @@ const filteredReferredProjectIssues = useMemo(() => {
 
               </div>
 
-              {totalAssignedProjectIssuePages >
-                1 && (
+              {totalAssignedProjectIssuePages > 1 && (
                 <Pagination
                   currentPage={
                     assignedProjectIssuesPage
@@ -1159,10 +1076,8 @@ const filteredReferredProjectIssues = useMemo(() => {
           description="Project-level issues referred to you."
           icon={Forward}
         >
-         
 
-          {filteredReferredProjectIssues.length ===
-          0 ? (
+          {filteredReferredProjectIssues.length === 0 ? (
             <EmptyState
               message={
                 referredProjectIssues.length === 0
@@ -1191,8 +1106,7 @@ const filteredReferredProjectIssues = useMemo(() => {
 
               </div>
 
-              {totalReferredProjectIssuePages >
-                1 && (
+              {totalReferredProjectIssuePages > 1 && (
                 <Pagination
                   currentPage={
                     referredProjectIssuesPage
@@ -1218,10 +1132,8 @@ const filteredReferredProjectIssues = useMemo(() => {
           description="Task-level issues currently assigned to you."
           icon={CircleAlert}
         >
-        
 
-          {filteredAssignedTaskIssues.length ===
-          0 ? (
+          {filteredAssignedTaskIssues.length === 0 ? (
             <EmptyState
               message={
                 assignedTaskIssues.length === 0
@@ -1252,8 +1164,7 @@ const filteredReferredProjectIssues = useMemo(() => {
 
               </div>
 
-              {totalAssignedTaskIssuePages >
-                1 && (
+              {totalAssignedTaskIssuePages > 1 && (
                 <Pagination
                   currentPage={
                     assignedTaskIssuesPage
@@ -1271,6 +1182,155 @@ const filteredReferredProjectIssues = useMemo(() => {
         </ProfileSection>
 
       </div>
+
+      {/* =====================================
+          CHANGE EMAIL MODAL
+      ===================================== */}
+
+      {showChangeEmail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl sm:p-8">
+
+            {/* Header */}
+
+            <div className="flex items-start justify-between gap-4">
+
+              <div>
+                <h2 className="text-xl font-semibold text-white sm:text-2xl">
+                  Change Email
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-400">
+                  Update the email address associated with your account.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseChangeEmail}
+                disabled={changeEmailLoading}
+                className="rounded-lg px-3 py-2 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+              >
+                ✕
+              </button>
+
+            </div>
+
+            {/* Error */}
+
+            {changeEmailError && (
+              <div className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+                {changeEmailError}
+              </div>
+            )}
+
+            {/* Success */}
+
+            {changeEmailMessage && (
+              <div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-4 py-3 text-sm text-emerald-300">
+                {changeEmailMessage}
+              </div>
+            )}
+
+            {/* Form */}
+
+            <form
+              onSubmit={handleChangeEmail}
+              className="mt-6 grid gap-5"
+            >
+
+              {/* Current Password */}
+
+              <div>
+                <label
+                  htmlFor="changeEmailCurrentPassword"
+                  className="mb-2 block text-sm font-medium text-slate-200"
+                >
+                  Current Password
+                </label>
+
+                <input
+                  id="changeEmailCurrentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) =>
+                    setCurrentPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="current-password"
+                  placeholder="Enter your current password"
+                  disabled={changeEmailLoading}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              {/* New Email */}
+
+              <div>
+                <label
+                  htmlFor="changeEmailNewEmail"
+                  className="mb-2 block text-sm font-medium text-slate-200"
+                >
+                  New Email Address
+                </label>
+
+                <input
+                  id="changeEmailNewEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(event) =>
+                    setNewEmail(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="email"
+                  placeholder="Enter your new email address"
+                  disabled={changeEmailLoading}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
+
+              {/* Information */}
+
+              <div className="rounded-xl border border-indigo-400/10 bg-indigo-400/5 px-4 py-3 text-sm text-slate-400">
+                A verification link will be sent to your new email
+                address. Your email will only change after you verify
+                the link. The verification link expires after 15 minutes.
+              </div>
+
+              {/* Actions */}
+
+              <div className="mt-1 flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+
+                <button
+                  type="button"
+                  onClick={handleCloseChangeEmail}
+                  disabled={changeEmailLoading}
+                  className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={changeEmailLoading}
+                  className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {changeEmailLoading
+                    ? "Sending..."
+                    : "Send Verification Email"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -1301,6 +1361,7 @@ const Pagination = ({
       </button>
 
       <div className="flex max-w-full items-center justify-center gap-2 overflow-x-auto px-1 pb-1">
+
         {Array.from(
           { length: totalPages },
           (_, index) => index + 1
@@ -1320,6 +1381,7 @@ const Pagination = ({
             {page}
           </button>
         ))}
+
       </div>
 
       <button
@@ -1353,6 +1415,7 @@ const FilterBar = ({
 }) => {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
       <div>
         <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-200">
           <Filter className="h-4 w-4 text-indigo-300" />
@@ -1384,10 +1447,10 @@ const FilterBar = ({
           </option>
         ))}
       </select>
+
     </div>
   );
 };
-        
 
 /* =========================================
    SUMMARY CARD

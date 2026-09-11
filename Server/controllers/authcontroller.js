@@ -8,7 +8,8 @@ const {
 } = require("../services/authTokenService.js");
 
 const {
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendEmailChangeVerification
 } = require("../services/emailService.js");
 
 
@@ -526,11 +527,10 @@ const changeEmail = async (req, res) => {
       `${process.env.CLIENT_URL}/verify-email/${emailChangeToken}`;
 
     try {
-      await sendEmailChangeVerification(
-        newEmail,
-        user.name,
+      await sendEmailChangeVerification({
+        email:newEmail,
         verificationUrl
-      );
+    });
     } catch (emailError) {
       console.error(
         "Email change verification failed:",
