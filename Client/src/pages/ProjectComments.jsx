@@ -764,6 +764,17 @@ const handleDeleteComment = async () => {
     </div>
   </div>
 )}
+
+<ConfirmationDialog
+  isOpen={showDeleteConfirm}
+  title="Delete comment"
+  message="Are you sure you want to delete this comment?"
+  onCancel={closeDeleteConfirmation}
+  onConfirm={handleDeleteComment}
+  loading={Boolean(commentDeletingId)}
+  confirmText="Delete"
+  cancelText="Cancel"
+/>
     </div>
   );
 }

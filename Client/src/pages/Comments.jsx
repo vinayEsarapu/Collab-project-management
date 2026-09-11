@@ -12,6 +12,7 @@ import {
   deleteComment,
 } from "../services/commentService";
 import DatePicker from "../components/DatePicker";
+import ConfirmationDialog from "../components/ConfirmationDialog";
 //import { getProjectById } from "../services/projectservices";
 
 function Comments() {
@@ -84,6 +85,12 @@ function Comments() {
 
   const [commentDeletingId, setCommentDeletingId] =
     useState(null);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+  useState(false);
+
+const [selectedCommentId, setSelectedCommentId] =
+  useState(null);
 
   // --------------------------------------------------
   // Navigation state
@@ -346,32 +353,44 @@ function Comments() {
   // Delete comment
   // --------------------------------------------------
 
-  const handleDeleteComment = async (commentId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this comment?"
+  const openDeleteConfirmation = (commentId) => {
+  setSelectedCommentId(commentId);
+  setShowDeleteConfirm(true);
+};
+
+const closeDeleteConfirmation = () => {
+  if (commentDeletingId) {
+    return;
+  }
+
+  setShowDeleteConfirm(false);
+  setSelectedCommentId(null);
+};
+
+const handleDeleteComment = async () => {
+  if (!selectedCommentId) {
+    return;
+  }
+
+  try {
+    setCommentDeletingId(selectedCommentId);
+    setError("");
+
+    await deleteComment(selectedCommentId);
+
+    setShowDeleteConfirm(false);
+    setSelectedCommentId(null);
+
+    await fetchComments();
+  } catch (error) {
+    setError(
+      error.response?.data?.message ||
+        "Failed to delete comment."
     );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setCommentDeletingId(commentId);
-      setError("");
-
-      await deleteComment(commentId);
-
-      await fetchComments();
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Failed to delete comment."
-      );
-    } finally {
-      setCommentDeletingId(null);
-    }
-  };
-
+  } finally {
+    setCommentDeletingId(null);
+  }
+};
   // --------------------------------------------------
   // Loading screen
   // --------------------------------------------------
@@ -676,10 +695,8 @@ function Comments() {
                             <button
                               type="button"
                               onClick={() =>
-                                handleDeleteComment(
-                                  comment._id
-                                )
-                              }
+  openDeleteConfirmation(comment._id)
+}
                               disabled={
                                 commentDeletingId ===
                                 comment._id
@@ -805,6 +822,16 @@ function Comments() {
         </section>
 
       </div>
+      <ConfirmationDialog
+  isOpen={showDeleteConfirm}
+  title="Delete comment"
+  message="Are you sure you want to delete this comment?"
+  onCancel={closeDeleteConfirmation}
+  onConfirm={handleDeleteComment}
+  loading={Boolean(commentDeletingId)}
+  confirmText="Delete"
+  cancelText="Cancel"
+/>
     </div>
   );
 }
