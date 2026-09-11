@@ -21,18 +21,72 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6
     },
-   
-   userCode: {
-     type: String,
-     unique: true,
-     required: true,
-     immutable: true,
-},
+
+    userCode: {
+      type: String,
+      unique: true,
+      required: true,
+      immutable: true,
+    },
 
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user"
+    },
+
+    /*
+     * =========================================
+     * EMAIL CHANGE
+     * =========================================
+     */
+
+    pendingEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      default: null
+    },
+
+    emailChangeTokenHash: {
+      type: String,
+      default: null
+    },
+
+    emailChangeExpiresAt: {
+      type: Date,
+      default: null
+    },
+
+    /*
+     * =========================================
+     * PASSWORD RESET
+     * =========================================
+     */
+
+    passwordResetTokenHash: {
+      type: String,
+      default: null
+    },
+
+    passwordResetExpiresAt: {
+      type: Date,
+      default: null
+    },
+
+    /*
+     * =========================================
+     * SESSION INVALIDATION
+     * =========================================
+     *
+     * Increment this whenever we need to
+     * invalidate previously issued refresh
+     * tokens.
+     */
+
+    tokenVersion: {
+      type: Number,
+      default: 0
     }
   },
   {
@@ -41,6 +95,7 @@ const userSchema = new mongoose.Schema(
 );
 
 const User =
-  mongoose.models.User || mongoose.model("User", userSchema);
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);
 
 module.exports = User;

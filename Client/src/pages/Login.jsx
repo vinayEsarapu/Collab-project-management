@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { loginUser } from "../services/authService";
 import { useAuth } from "../context/Authcontext";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Link , useNavigate } from "react-router-dom";
 
 function Login() {
   const navigate = useNavigate();
@@ -147,6 +147,15 @@ function Login() {
                   </button>
                 </div>
               </div>
+
+              <div className="flex justify-end">
+  <Link
+    to="/forgot-password"
+    className="text-sm text-blue-400 hover:text-blue-300 transition"
+  >
+    Forgot Password?
+  </Link>
+</div>
 
               {/* Submit */}
               <button

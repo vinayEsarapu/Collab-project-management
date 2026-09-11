@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { getMyProfile } from "../services/profileService.js";
+import { changeEmail } from "../services/authService";
 
 /* =========================================
    HELPERS
@@ -72,6 +73,13 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
+const [currentPassword, setCurrentPassword] = useState("");
+const [newEmail, setNewEmail] = useState("");
+const [changeEmailLoading, setChangeEmailLoading] = useState(false);
+const [changeEmailMessage, setChangeEmailMessage] = useState("");
+const [changeEmailError, setChangeEmailError] = useState("");
 
   /* =======================================
    MY TASKS
@@ -522,6 +530,53 @@ const filteredReferredProjectIssues = useMemo(() => {
     );
   };
 
+
+  const handleChangeEmail = async (e) => {
+  e.preventDefault();
+
+  setChangeEmailMessage("");
+  setChangeEmailError("");
+
+  if (!currentPassword.trim()) {
+    setChangeEmailError("Please enter your current password");
+    return;
+  }
+
+  if (!newEmail.trim()) {
+    setChangeEmailError("Please enter your new email address");
+    return;
+  }
+
+  if (!newEmail.includes("@")) {
+    setChangeEmailError("Please enter a valid email address");
+    return;
+  }
+
+  try {
+    setChangeEmailLoading(true);
+
+    const response = await changeEmail(
+      currentPassword,
+      newEmail.trim()
+    );
+
+    setChangeEmailMessage(
+      response.message ||
+        "Verification email sent to your new email address."
+    );
+
+    setCurrentPassword("");
+    setNewEmail("");
+  } catch (error) {
+    setChangeEmailError(
+      error.response?.data?.message ||
+        "Unable to change email. Please try again later."
+    );
+  } finally {
+    setChangeEmailLoading(false);
+  }
+};
+
   /* =======================================
      LOADING
   ======================================= */
@@ -654,6 +709,153 @@ const filteredReferredProjectIssues = useMemo(() => {
             </div>
           </div>
         </section>
+
+
+       {/* =====================================
+    CHANGE EMAIL
+===================================== */}
+
+<section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+
+  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+    <div>
+      <h2 className="text-lg font-semibold text-slate-100">
+        Email Address
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-400">
+        Change the email address associated with your account.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => {
+        setShowChangeEmail((previous) => !previous);
+        setChangeEmailError("");
+        setChangeEmailMessage("");
+      }}
+      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
+    >
+      {showChangeEmail ? "Cancel" : "Change Email"}
+    </button>
+
+  </div>
+
+  {showChangeEmail && (
+    <form
+      onSubmit={handleChangeEmail}
+      className="mt-6 space-y-5 border-t border-white/10 pt-5"
+    >
+
+      {/* ERROR */}
+
+      {changeEmailError && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {changeEmailError}
+        </div>
+      )}
+
+      {/* SUCCESS */}
+
+      {changeEmailMessage && (
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+          {changeEmailMessage}
+        </div>
+      )}
+
+      {/* CURRENT PASSWORD */}
+
+      <div>
+        <label
+          htmlFor="currentPassword"
+          className="mb-2 block text-sm font-medium text-slate-300"
+        >
+          Current Password
+        </label>
+
+        <input
+          id="currentPassword"
+          type="password"
+          value={currentPassword}
+          onChange={(event) =>
+            setCurrentPassword(event.target.value)
+          }
+          placeholder="Enter your current password"
+          autoComplete="current-password"
+          disabled={changeEmailLoading}
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+      </div>
+
+      {/* NEW EMAIL */}
+
+      <div>
+        <label
+          htmlFor="newEmail"
+          className="mb-2 block text-sm font-medium text-slate-300"
+        >
+          New Email Address
+        </label>
+
+        <input
+          id="newEmail"
+          type="email"
+          value={newEmail}
+          onChange={(event) =>
+            setNewEmail(event.target.value)
+          }
+          placeholder="Enter your new email address"
+          autoComplete="email"
+          disabled={changeEmailLoading}
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+      </div>
+
+      {/* INFORMATION */}
+
+      <div className="rounded-xl border border-indigo-400/10 bg-indigo-400/5 px-4 py-3 text-sm text-slate-400">
+        A verification link will be sent to your new email address.
+        Your email will only change after you verify the link.
+        The verification link expires after 15 minutes.
+      </div>
+
+      {/* ACTIONS */}
+
+      <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowChangeEmail(false);
+            setCurrentPassword("");
+            setNewEmail("");
+            setChangeEmailError("");
+            setChangeEmailMessage("");
+          }}
+          disabled={changeEmailLoading}
+          className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          disabled={changeEmailLoading}
+          className="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-lg hover:shadow-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {changeEmailLoading
+            ? "Sending..."
+            : "Send Verification Email"}
+        </button>
+
+      </div>
+
+    </form>
+  )}
+
+</section>
 
         {/* =====================================
             SUMMARY

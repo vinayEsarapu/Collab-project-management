@@ -25,6 +25,9 @@ import Tasks from "./pages/Tasks";
 import TaskDetails from "./pages/TaskDetails";
 import TaskIssues from "./Pages/TaskIssues";
 import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 
 function ProtectedLayout() {
   return (
@@ -64,6 +67,22 @@ function App() {
             element={<Login />}
           />
         </Route>
+
+         <Route
+    path="/forgot-password"
+    element={<ForgotPassword />}
+  />
+
+  <Route
+  path="/reset-password/:token"
+  element={<ResetPassword />}
+/>
+
+<Route
+  path="/verify-email/:token"
+  element={<VerifyEmail />}
+/>
+
 
         {/* =========================
             PROTECTED ROUTES
