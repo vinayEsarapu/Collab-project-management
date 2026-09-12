@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DatePicker from "../components/DatePicker";
 import { getProjectActivity, getProjectById ,  deleteProjectActivity} from "../services/projectservices";
-
+import { useAuth } from "../context/Authcontext.jsx";
 function ProjectActivity() {
   const { id } = useParams();
   const navigate = useNavigate();
-
+  const { user } = useAuth();
   const [project, setProject] = useState(null);
   const [activities, setActivities] = useState([]);
 
@@ -25,6 +25,10 @@ function ProjectActivity() {
   const [error, setError] = useState("");
   const [activityError, setActivityError] = useState("");
   const [deletingActivityId, setDeletingActivityId] = useState(null);
+
+  const isProjectOwner =
+  project?.owner?._id?.toString() ===
+  user?._id?.toString();
 
   const loadProject = async () => {
     try {
@@ -317,13 +321,14 @@ const handleDeleteActivity = async () => {
               <div className="mt-6 space-y-3">
                {activities.map((activity) => (
   <ActivityCard
-    key={activity._id}
-    activity={activity}
-    onDelete={openDeleteConfirmation}
-    isDeleting={
-      deletingActivityId === activity._id
-    }
-  />
+  key={activity._id}
+  activity={activity}
+  onDelete={openDeleteConfirmation}
+  isDeleting={
+    deletingActivityId === activity._id
+  }
+  canDelete={isProjectOwner}
+/>
 ))}
               </div>
 
@@ -430,6 +435,7 @@ function ActivityCard({
   activity,
   onDelete,
   isDeleting,
+   canDelete,
 }) {
   const userName =
     activity.user?.name ||
@@ -463,16 +469,18 @@ function ActivityCard({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onDelete(activity._id)}
-            disabled={isDeleting}
-            className="w-fit rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isDeleting
-              ? "Deleting..."
-              : "Delete"}
-          </button>
+         {canDelete && (
+  <button
+    type="button"
+    onClick={() => onDelete(activity._id)}
+    disabled={isDeleting}
+    className="w-fit rounded-lg border border-red-400/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {isDeleting
+      ? "Deleting..."
+      : "Delete"}
+  </button>
+)}
         </div>
 
         <p className="mt-2 text-sm leading-5 text-slate-400">

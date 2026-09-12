@@ -341,18 +341,7 @@ function IssueForm({
                     No referral
                   </option>
 
-                  {projectMembers
-                    .filter((member) => {
-                      const memberId =
-                        member?._id?.toString();
-
-                      return (
-                        memberId &&
-                        memberId !==
-                          currentUserId?.toString()
-                      );
-                    })
-                    .map((member) => (
+                  {projectMembers.map((member) => (
                       <option
                         key={member._id}
                         value={member._id}

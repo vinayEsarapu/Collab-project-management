@@ -8,6 +8,7 @@ import {
   deleteProjectComment,
 } from "../services/projectservices";
 import DatePicker from "../components/DatePicker";
+import ConfirmationDialog from "../components/ConfirmationDialog";
 
 function ProjectComments() {
   const { id: projectId } = useParams();

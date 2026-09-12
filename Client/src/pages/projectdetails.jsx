@@ -15,6 +15,7 @@ import {
 
 import { useAuth } from "../context/Authcontext.jsx";
 import EditProjectForm from "../pages/EditProjectForm";
+import ConfirmationDialog from "../components/ConfirmationDialog";
 
 function ProjectDetails() {
   const { id } = useParams();
@@ -34,6 +35,11 @@ function ProjectDetails() {
 
   const [isEditingProject, setIsEditingProject] =
     useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] =
+  useState(false);
+
+const [isDeletingProject, setIsDeletingProject] =
+  useState(false);
 
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -338,31 +344,43 @@ function ProjectDetails() {
     });
   };
 
-  const handleDeleteProject = async () => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${project.title}"? This action cannot be undone.`
+  const handleDeleteProject = () => {
+  setIsDeleteDialogOpen(true);
+};
+
+const handleCancelDeleteProject = () => {
+  if (isDeletingProject) {
+    return;
+  }
+
+  setIsDeleteDialogOpen(false);
+};
+
+const handleConfirmDeleteProject = async () => {
+  try {
+    setIsDeletingProject(true);
+    setError("");
+
+    await deleteProject(id);
+
+    setIsDeleteDialogOpen(false);
+    navigate("/projects");
+  } catch (error) {
+    console.error(
+      "Failed to delete project:",
+      error
     );
 
-    if (!confirmed) {
-      return;
-    }
+    setError(
+      error.response?.data?.message ||
+        "Unable to delete project."
+    );
 
-    try {
-      await deleteProject(id);
-
-      navigate("/projects");
-    } catch (error) {
-      console.error(
-        "Failed to delete project:",
-        error
-      );
-
-      setError(
-        error.response?.data?.message ||
-          "Unable to delete project."
-      );
-    }
-  };
+    setIsDeleteDialogOpen(false);
+  } finally {
+    setIsDeletingProject(false);
+  }
+};
 
   if (isLoading) {
     return (
@@ -655,10 +673,10 @@ function ProjectDetails() {
             </div>
 
             <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-              {project.members?.length || 0} member
-              {project.members?.length === 1
-                ? ""
-                : "s"}
+              {(project.members?.length || 0) + (project.owner ? 1 : 0)} member
+  {((project.members?.length || 0) + (project.owner ? 1 : 0)) === 1
+    ? ""
+    : "s"}
             </span>
           </div>
 
@@ -854,6 +872,17 @@ function ProjectDetails() {
         </section>
 
       </main>
+
+      <ConfirmationDialog
+  isOpen={isDeleteDialogOpen}
+  title="Delete project?"
+  message={`Are you sure you want to delete "${project.title}"? This action cannot be undone.`}
+  onCancel={handleCancelDeleteProject}
+  onConfirm={handleConfirmDeleteProject}
+  confirmText="Delete Project"
+  cancelText="Cancel"
+  loading={isDeletingProject}
+/>
     </div>
   );
 }
