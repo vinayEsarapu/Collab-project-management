@@ -81,7 +81,8 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+const email = req.body.email?.trim().toLowerCase();
 
     if (!email || !password) {
       return res.status(400).json({
@@ -90,6 +91,8 @@ const loginUser = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
+
+   
 
     if (!user) {
       return res.status(401).json({
@@ -107,6 +110,7 @@ const loginUser = async (req, res) => {
         message: "Invalid email or password"
       });
     }
+
 
     // Short-lived access token
     const accessToken = jwt.sign(
@@ -312,11 +316,10 @@ const forgotPassword = async (req, res) => {
       `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
     try {
-      await sendPasswordResetEmail(
-        user.email,
-        user.name,
-        resetUrl
-      );
+     await sendPasswordResetEmail({
+  email: user.email,
+  resetUrl,
+});
     } catch (emailError) {
       /*
        * Do not reveal email-service failure to the user.

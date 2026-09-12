@@ -79,8 +79,9 @@ const Profile = () => {
   ======================================= */
 
   const [showChangeEmail, setShowChangeEmail] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+ const [currentPassword, setCurrentPassword] = useState("");
+const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+const [newEmail, setNewEmail] = useState("");
   const [changeEmailLoading, setChangeEmailLoading] = useState(false);
   const [changeEmailMessage, setChangeEmailMessage] = useState("");
   const [changeEmailError, setChangeEmailError] = useState("");
@@ -574,7 +575,8 @@ const Profile = () => {
       );
 
       setCurrentPassword("");
-      setNewEmail("");
+setShowCurrentPassword(false);
+setNewEmail("");
       setShowChangeEmail(false);
     } catch (error) {
       setChangeEmailError(
@@ -1250,20 +1252,79 @@ const Profile = () => {
                   Current Password
                 </label>
 
-                <input
-                  id="changeEmailCurrentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(event) =>
-                    setCurrentPassword(
-                      event.target.value
-                    )
-                  }
-                  autoComplete="current-password"
-                  placeholder="Enter your current password"
-                  disabled={changeEmailLoading}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 disabled:cursor-not-allowed disabled:opacity-60"
-                />
+                <div className="relative">
+  <input
+    type={showCurrentPassword ? "text" : "password"}
+    value={currentPassword}
+    onChange={(e) => setCurrentPassword(e.target.value)}
+    placeholder="Enter your current password"
+    autoComplete="current-password"
+    disabled={changeEmailLoading}
+    className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  />
+
+  <button
+    type="button"
+    onClick={() =>
+      setShowCurrentPassword((previous) => !previous)
+    }
+    disabled={changeEmailLoading}
+    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition disabled:cursor-not-allowed"
+    aria-label={
+      showCurrentPassword
+        ? "Hide password"
+        : "Show password"
+    }
+  >
+    {showCurrentPassword ? (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="w-5 h-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 3l18 18"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M10.58 10.58a2 2 0 002.84 2.84"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9.88 4.24A9.77 9.77 0 0112 4c5 0 8.5 4 10 8a16.7 16.7 0 01-4.12 5.36"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M6.61 6.61C4.92 7.74 3.69 9.4 2 12c1.5 4 5 8 10 8 1.61 0 3.07-.39 4.39-1.09"
+        />
+      </svg>
+    ) : (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="w-5 h-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
+        />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    )}
+  </button>
+</div>
               </div>
 
               {/* New Email */}

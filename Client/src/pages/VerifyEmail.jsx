@@ -1,15 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect,  useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
 
-const VerifyEmail = () => {
+
+
+  const VerifyEmail = () => {
   const { token } = useParams();
   const navigate = useNavigate();
 
   const [status, setStatus] = useState("verifying");
   const [message, setMessage] = useState("");
 
+  const verificationStarted = useRef(false);
+
   useEffect(() => {
+  if (verificationStarted.current) {
+    return;
+  }
+
+  verificationStarted.current = true;
+
     const verifyEmail = async () => {
       if (!token) {
         setStatus("error");

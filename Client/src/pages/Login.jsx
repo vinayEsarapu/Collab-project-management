@@ -33,8 +33,8 @@ function Login() {
       setLoading(true);
       setError("");
 
-      const response = await loginUser(formData);
-      const { user, accessToken } = response.data;
+     const response = await loginUser(formData);
+const { user, accessToken } = response;
 
       login(user, accessToken);
 
