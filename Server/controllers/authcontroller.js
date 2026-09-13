@@ -142,7 +142,7 @@ const email = req.body.email?.trim().toLowerCase();
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -226,7 +226,7 @@ const logoutUser = (req, res) => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict"
+    sameSite: "none"
   });
 
   res.status(200).json({
@@ -424,7 +424,7 @@ const resetPassword = async (req, res) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict"
+      sameSite: "none"
     });
 
     return res.status(200).json({
@@ -668,7 +668,7 @@ const verifyEmailChange = async (req, res) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict"
+      sameSite: "none"
     });
 
     return res.status(200).json({
