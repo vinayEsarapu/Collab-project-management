@@ -24,7 +24,7 @@ const {
   updateIssueValidator,
 } = require("../validators/issuevalidator");
 
-const validate = require("../middleware/validationMiddleware");
+const validate = require("../middleware/validationmiddleware");
 
 const {checkIssueAccess,   checkTaskIssueAccess,} = require("../middleware/issueauthorization");
 
