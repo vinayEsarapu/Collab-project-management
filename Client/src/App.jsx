@@ -12,7 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateProject from "./pages/Createprojects";
 import ProtectedRoute from "./components/protectedroute";
 import GuestRoute from "./pages/GuestRoute";
-import ProjectDetails from "./pages/Projectdetails";
+import ProjectDetails from "./pages/projectdetails";
 import Issues from "./pages/issues";
 import IssueDetails from "./pages/issueDetails";
 import Projects from "./pages/Projects";
