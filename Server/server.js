@@ -10,7 +10,7 @@ const connectDB = require("./config/db");
 const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/authroutes");
-const projectRoutes = require("./routes/projectroutes");
+const projectRoutes = require("./routes/Projectroutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const activityRoutes = require("./routes/activityRoutes");
