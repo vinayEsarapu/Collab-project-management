@@ -5,7 +5,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import IssueCard from "../components/issues/IssueCard";
+import IssueCard from "../components/issues/issuecard";
 import IssueForm from "../components/issues/issueform";
 import {
   createIssue,

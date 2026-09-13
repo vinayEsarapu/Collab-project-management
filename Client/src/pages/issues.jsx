@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import IssueCard from "../components/issues/IssueCard";
+import IssueCard from "../components/issues/issuecard";
 import { useAuth } from "../context/Authcontext";
 import IssueForm from "../components/issues/issueform";
 import {
