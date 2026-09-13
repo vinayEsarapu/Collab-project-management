@@ -9,8 +9,8 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const cookieParser = require("cookie-parser");
 
-const authRoutes = require("./routes/authRoutes");
-const projectRoutes = require("./routes/projectRoutes");
+const authRoutes = require("./routes/authroutes");
+const projectRoutes = require("./routes/projectroutes");
 const issueRoutes = require("./routes/issueRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const activityRoutes = require("./routes/activityRoutes");
@@ -38,7 +38,7 @@ if (!process.env.REFRESH_TOKEN_SECRET) {
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
