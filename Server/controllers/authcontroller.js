@@ -137,14 +137,15 @@ const email = req.body.email?.trim().toLowerCase();
         expiresIn: "7d"
       }
     );
+    const isProduction = process.env.NODE_ENV === "production";
 
     // Store refresh token in an HttpOnly cookie
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+   res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000
+});
 
     res.status(200).json({
       message: "Login successful",
@@ -223,11 +224,13 @@ const refreshAccessToken = async (req, res) => {
 
 
 const logoutUser = (req, res) => {
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "none"
-  });
+ const isProduction = process.env.NODE_ENV === "production";
+
+res.clearCookie("refreshToken", {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax"
+});
 
   res.status(200).json({
     message: "Logout successful"
@@ -421,11 +424,13 @@ const resetPassword = async (req, res) => {
     /*
      * Clear any existing refresh cookie from this browser.
      */
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none"
-    });
+   const isProduction = process.env.NODE_ENV === "production";
+
+res.clearCookie("refreshToken", {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax"
+});
 
     return res.status(200).json({
       message:
@@ -665,11 +670,13 @@ const verifyEmailChange = async (req, res) => {
     /*
      * Clear the current browser's refresh cookie.
      */
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "none"
-    });
+    const isProduction = process.env.NODE_ENV === "production";
+
+res.clearCookie("refreshToken", {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax"
+});
 
     return res.status(200).json({
       message:
